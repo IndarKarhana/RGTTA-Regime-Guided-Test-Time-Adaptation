@@ -4,7 +4,7 @@
 PYTHON = .venv/bin/python
 PYTHONPATH_ENV = PYTHONPATH=.:src:benchmarks:benchmarks/data_loaders
 
-.PHONY: help install test lint format benchmark benchmark-quick benchmark-clean
+.PHONY: help install test lint format benchmark benchmark-quick benchmark-clean clean-pkl
 
 help:
 	@echo "Makefile targets:"
@@ -15,6 +15,7 @@ help:
 	@echo "  make benchmark         - full 7-policy benchmark (4 models × 4 datasets × 3 horizons)"
 	@echo "  make benchmark-quick   - smoke test (1 model × 1 dataset × 1 horizon)"
 	@echo "  make benchmark-clean   - clean results and re-run benchmark"
+	@echo "  make clean-pkl         - delete ALL .pkl checkpoint files from workspace"
 
 install:
 	@echo "Installing dependencies..."
@@ -50,3 +51,8 @@ benchmark-clean:
 	rm -rf benchmarks/results/unified/ckpt_*
 	@echo "Running fresh benchmark..."
 	$(MAKE) benchmark
+
+clean-pkl:
+	@echo "Deleting all .pkl checkpoint files..."
+	find . -name "*.pkl" -not -path "./.git/*" -delete
+	@echo "✅ All .pkl files removed."

@@ -124,7 +124,7 @@
 |---|------|-------------|----------|
 | D1 | **5 seeds instead of 3** | ~30 hours additional compute. Strengthens statistical claims. | Low |
 | D2 | **Additional real-world datasets** | Electricity, Traffic, ILI (used by DynaTTA). Would strengthen real-world claim. | Medium |
-| D3 | **Adapter module experiment** | For PatchTST/iTransformer: unfreeze adapter layers instead of full backbone freeze. Could improve attention-model results. | Low |
+| D3 | ~~**Adapter module experiment**~~ | ~~For PatchTST/iTransformer: unfreeze adapter layers instead of full backbone freeze.~~ **DROPPED** — orthogonal to core contribution; already cited as future work in paper (§Limitations item 8, §Architecture Sensitivity). | — |
 | D4 | **Partial unfreezing ablation** | Compare freeze-all vs freeze-backbone-only vs unfreeze-all across architectures. | Low |
 | D5 | **Sensitivity analysis for all 10 hyperparameters** | Comprehensive grid over all manually-tuned params. For IEEE TNNLS. | Medium |
 
