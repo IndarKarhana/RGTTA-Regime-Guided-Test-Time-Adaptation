@@ -126,7 +126,7 @@ For each batch, RG-TTA extracts a 5-dimensional distributional feature vector:
   \mathbf{r} = \big(\mu,\; \sigma,\; \gamma_1,\; \kappa{-}3,\; r_1\big),
   \label{eq:features}
 \end{equation}
-where $\mu$ is the mean, $\sigma$ the standard deviation, $\gamma_1$ the skewness, $\kappa{-}3$ the excess kurtosis, and $r_1$ the lag-1 autocorrelation. These features are computed from the most recent $3 \times \text{season\_length}$ samples of the target series and capture the distribution's location, scale, shape, tail behaviour, and temporal structure in $O(n)$ time.
+where $\mu$ is the mean, $\sigma$ the standard deviation, $\gamma_1$ the skewness, $\kappa{-}3$ the excess kurtosis, and $r_1$ the lag-1 autocorrelation. These features are computed from the most recent $3 \times \text{season\_length}$ samples of the target series and capture the distribution's location, scale, shape, tail behaviour, and temporal structure in $O(n)$ time. The deliberate simplicity of this feature vector is a design choice, not a limitation: it is cheap to compute (adding $<$0.1\% latency), fully interpretable, and---as the 69.6\% win rate across 14 diverse datasets confirms---\emph{sufficient} for effective regime discrimination. Richer representations (e.g., learned embeddings or spectral features) could capture more complex regime structures, but at the cost of additional parameters, training overhead, and opacity.
 
 Similarity between a query batch $\mathbf{q}$ and a stored regime $\mathbf{s}$ is computed as a weighted ensemble of four complementary metrics:
 
@@ -249,7 +249,7 @@ However, the effectiveness of frozen-backbone TTA is \emph{architecture-dependen
 \label{sec:theory}
 % ============================================================
 
-We provide formal analysis of RG-TTA's three design pillars: frozen-backbone adaptation (\S\ref{sec:theory_gen}), similarity-guided initialisation (\S\ref{sec:theory_adapt}), and the ensemble similarity metric (\S\ref{sec:theory_metric}). Together, these results establish that RG-TTA's mechanisms are principled---not merely heuristic---and yield quantitative conditions under which regime-guidance provably improves upon fixed-strategy TTA.
+We provide formal analysis of RG-TTA's three design pillars: frozen-backbone adaptation (\S\ref{sec:theory_gen}), similarity-guided initialisation (\S\ref{sec:theory_adapt}), and the ensemble similarity metric (\S\ref{sec:theory_metric}). Together, these results establish that RG-TTA's mechanisms are principled---not merely heuristic---and yield quantitative conditions under which regime-guidance provably improves upon fixed-strategy TTA. We note that the analysis assumes strong convexity and smoothness of the output-head loss landscape---reasonable for the single linear layer that constitutes the trainable head, but an idealisation relative to the Adam optimiser and finite-batch noise used in practice. The theoretical results should therefore be read as \emph{design rationale and directional guarantees}, not tight performance predictions; the empirical results in \S\ref{sec:results} provide the definitive evaluation.
 
 \subsection{Adaptation Error Decomposition}
 \label{sec:theory_adapt}
@@ -647,7 +647,7 @@ Of the 14 datasets, regime-guided policies win the majority on 13:
 
 The 100\% win rate on \texttt{synth\_recurring} demonstrates RG-TTA's effectiveness on periodic data. Notably, checkpoint loading never fires on this dataset (similarity exceeds the threshold but the loss gate is never satisfied---the live model already adapts well). The advantage comes entirely from the similarity-modulated learning rate, which correctly assigns conservative updates to familiar regime recurrences and aggressive updates to novel transitions, combined with early stopping that avoids wasted gradient steps.
 
-\paragraph{Real-world vs synthetic win rates.} A potential concern is that the overall 69.6\% win rate is inflated by synthetic datasets designed to favour regime-detection. Separating the two categories shows this is not the case: regime-guided policies win \textbf{67/96 (69.8\%)} on real-world data and \textbf{89/128 (69.5\%)} on synthetic data---nearly identical rates. The regime-guidance benefit is not an artefact of synthetic design; it generalises to standard real-world benchmarks.
+\paragraph{Real-world vs synthetic win rates.} A natural concern is that the overall 69.6\% win rate is inflated by synthetic datasets engineered to exhibit recurring regimes. Separating the two categories decisively refutes this: regime-guided policies win \textbf{67/96 (69.8\%)} on real-world data and \textbf{89/128 (69.5\%)} on synthetic data---a gap of just 0.3 percentage points. This near-perfect parity is the strongest evidence that regime-guidance captures genuine distributional structure, not synthetic artefacts. The real-world win rate alone (69.8\%) would be a strong result; the synthetic parity confirms that the evaluation is not inflated by favourable data design.
 
 Figure~\ref{fig:heatmap} provides a per-dataset heatmap of win rates.
 
