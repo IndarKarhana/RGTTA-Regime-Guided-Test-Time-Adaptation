@@ -1,0 +1,78 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Environments
+.venv/
+venv/
+env/
+ENV/
+
+# IDEs
+.vscode/
+.idea/
+
+# Jupyter
+.ipynb_checkpoints
+
+# Pytest
+.pytest_cache/
+
+# Mypy
+.mypy_cache/
+
+# Byte-compiled / optimized / DLL files
+*.pyc
+*.pyo
+*.pyd
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Checkpoints and large artifacts
+checkpoints/
+checkpoints/**
+*.pt
+*.pth
+benchmarks/checkpoints_*/
+benchmarks/results/*.log
+
+# Test artifacts (generated during runs)
+benchmark_test*/
+test_checkpoint_debug*/
+
+# Data (ignore large datasets by default - remove or edit if you want to track sample CSVs)
+# To include sample CSVs in the repo, remove the following line or edit as needed.
+# data/*.csv
+
+# Logs
+*.log
+.DS_Store
+.cursor/
+
+# Benchmark data (downloaded/generated — too large for git)
+data/benchmarks/*.csv
+data/benchmarks/synthetic_metadata.json
+
+# Reference PDFs (copyrighted papers)
+docs/*.pdf
+
+# Benchmark checkpoint dirs and results artifacts
+benchmarks/results/unified/ckpt_*
+
+# v2 benchmark checkpoint dirs (large binary files)
+benchmarks/results/unified_v2_8pol/ckpt_*
+benchmarks/results/unified_tta_v5/ckpt_*
+benchmarks/results/unified_retrain_v5/ckpt_*
+benchmarks/results/smoke_*/ckpt_*
+
+# Large JSON result files (use CSV instead)
+benchmarks/results/*/unified_results.json
+
+*.pkl
+archive/stale/
+*_backup.md
+paper/Research_regime_framework.pdf

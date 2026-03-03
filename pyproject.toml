@@ -1,0 +1,37 @@
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+name = "regime-forecasting"
+version = "0.3.0"
+description = "RG-TTA: Regime-Guided Meta-Control for Test-Time Adaptation in Streaming Time Series"
+authors = ["Your Name <your.email@example.com>"]
+readme = "README.md"
+packages = [{include = "regime_forecasting", from = "src"}]
+
+[tool.poetry.dependencies]
+# Require Python >=3.8.1 to satisfy some dependency markers (e.g., flake8)
+python = ">=3.8.1,<4.0"
+torch = "^2.0.0"
+numpy = "^1.21.0"
+pandas = "^2.0.0"
+scikit-learn = "^1.3.0"
+statsmodels = "^0.14.0"
+tqdm = "^4.65.0"
+matplotlib = "^3.7.0"
+seaborn = "^0.12.0"
+scipy = "^1.10.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+black = "^23.7.0"
+flake8 = "^6.0.0"
+mypy = "^1.5.0"
+pre-commit = "^3.5.0"
+ruff = "^0.1.8"
+isort = "^5.13.0"
+
+[tool.poetry.group.test.dependencies]
+pytest-mock = "^3.11.1"

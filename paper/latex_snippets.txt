@@ -1,0 +1,21 @@
+
+% === WILCOXON P-VALUES FOR TABLE 3 (pairwise) ===
+% TTA→RG-TTA: p=1.04e-05 ***
+% EWC→RG-EWC: p=2.41e-11 ***
+% DynaTTA→RG-DynaTTA: p=6.84e-03 **
+
+% === UPDATED PAIRWISE TABLE WITH P-VALUES ===
+% Replace Table 3 (tab:pairwise) with:
+\begin{tabular}{llcccc}
+\toprule
+Baseline & RG-Variant & $\Delta$MSE (avg) & $\Delta$MSE (median) & RG Wins & $p$-value \\
+\midrule
+TTA & RG-TTA & $-5.7\%$ & $-5.1\%$ & 150/224 (67.0\%) & $1.0e-05$*** \\
+EWC & RG-EWC & $-14.1\%$ & $-10.0\%$ & 169/224 (75.4\%) & $2.4e-11$*** \\
+DynaTTA & RG-DynaTTA & $+0.5\%$ & $-3.8\%$ & 139/224 (62.1\%) & $6.8e-03$** \\
+\bottomrule
+\end{tabular}
+
+% === REAL-WORLD vs SYNTHETIC WIN SUMMARY ===
+% Real-world: RG wins 67/96 (69.8%)
+% Synthetic: RG wins 89/128 (69.5%)

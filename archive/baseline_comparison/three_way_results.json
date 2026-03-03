@@ -1,0 +1,332 @@
+{
+  "synth_multi_regime_000": {
+    "dataset": "synth_multi_regime_000",
+    "baseline_mape": 37.08743220343771,
+    "tta_mape": 21.233095089557658,
+    "regime_mape": 17.739444231293533,
+    "baseline_time": 3.0948681831359863,
+    "tta_time": 1.3194313049316406,
+    "regime_time": 1.1731657981872559,
+    "n_batches": 6
+  },
+  "synth_covid_shock_001": {
+    "dataset": "synth_covid_shock_001",
+    "baseline_mape": 9.877575370265625,
+    "tta_mape": 12.631820307292957,
+    "regime_mape": 30.075747717009666,
+    "baseline_time": 2.8818812370300293,
+    "tta_time": 1.3526437282562256,
+    "regime_time": 0.05007433891296387,
+    "n_batches": 6
+  },
+  "synth_recurring_002": {
+    "dataset": "synth_recurring_002",
+    "baseline_mape": 13.723508991278479,
+    "tta_mape": 18.08480463194559,
+    "regime_mape": 18.116786186875654,
+    "baseline_time": 2.3283650875091553,
+    "tta_time": 1.252556562423706,
+    "regime_time": 0.08429551124572754,
+    "n_batches": 6
+  },
+  "synth_multi_regime_003": {
+    "dataset": "synth_multi_regime_003",
+    "baseline_mape": 39.44658626189161,
+    "tta_mape": 42.0251893973914,
+    "regime_mape": 26.117921504921018,
+    "baseline_time": 3.453216791152954,
+    "tta_time": 1.6452276706695557,
+    "regime_time": 2.0388028621673584,
+    "n_batches": 6
+  },
+  "synth_covid_shock_004": {
+    "dataset": "synth_covid_shock_004",
+    "baseline_mape": 12.080557146996263,
+    "tta_mape": 10.72078004101467,
+    "regime_mape": 19.030707302331688,
+    "baseline_time": 3.867644786834717,
+    "tta_time": 1.7535772323608398,
+    "regime_time": 0.09118986129760742,
+    "n_batches": 6
+  },
+  "synth_recurring_005": {
+    "dataset": "synth_recurring_005",
+    "baseline_mape": 18.323516339393397,
+    "tta_mape": 17.76625435394556,
+    "regime_mape": 18.271667733959212,
+    "baseline_time": 3.431255340576172,
+    "tta_time": 2.1051065921783447,
+    "regime_time": 0.06621909141540527,
+    "n_batches": 6
+  },
+  "synth_multi_regime_006": {
+    "dataset": "synth_multi_regime_006",
+    "baseline_mape": 26.78867244956736,
+    "tta_mape": 35.34793824211058,
+    "regime_mape": 23.171057978320622,
+    "baseline_time": 3.2366983890533447,
+    "tta_time": 1.7032017707824707,
+    "regime_time": 1.544600486755371,
+    "n_batches": 6
+  },
+  "synth_covid_shock_007": {
+    "dataset": "synth_covid_shock_007",
+    "baseline_mape": 13.323010663894998,
+    "tta_mape": 12.588647992285416,
+    "regime_mape": 26.109493373995747,
+    "baseline_time": 3.144474983215332,
+    "tta_time": 1.4557769298553467,
+    "regime_time": 0.04475212097167969,
+    "n_batches": 6
+  },
+  "synth_recurring_008": {
+    "dataset": "synth_recurring_008",
+    "baseline_mape": 21.78584327460898,
+    "tta_mape": 18.051675373125516,
+    "regime_mape": 19.515859886069773,
+    "baseline_time": 2.9729061126708984,
+    "tta_time": 1.380108118057251,
+    "regime_time": 0.04407143592834473,
+    "n_batches": 6
+  },
+  "synth_multi_regime_009": {
+    "dataset": "synth_multi_regime_009",
+    "baseline_mape": 29.94564676059791,
+    "tta_mape": 38.61483313073167,
+    "regime_mape": 19.442277117230745,
+    "baseline_time": 2.867706537246704,
+    "tta_time": 1.4390084743499756,
+    "regime_time": 1.133317232131958,
+    "n_batches": 6
+  },
+  "synth_covid_shock_010": {
+    "dataset": "synth_covid_shock_010",
+    "baseline_mape": 11.721177060488522,
+    "tta_mape": 18.530376402427503,
+    "regime_mape": 14.2352127249216,
+    "baseline_time": 2.341080665588379,
+    "tta_time": 1.1724724769592285,
+    "regime_time": 0.032911062240600586,
+    "n_batches": 6
+  },
+  "synth_recurring_011": {
+    "dataset": "synth_recurring_011",
+    "baseline_mape": 17.183248569257028,
+    "tta_mape": 16.079128528969207,
+    "regime_mape": 18.37534818939955,
+    "baseline_time": 2.6309492588043213,
+    "tta_time": 1.3823728561401367,
+    "regime_time": 0.062357187271118164,
+    "n_batches": 6
+  },
+  "synth_multi_regime_012": {
+    "dataset": "synth_multi_regime_012",
+    "baseline_mape": 30.77539837220141,
+    "tta_mape": 23.43249980308542,
+    "regime_mape": 17.511329412504576,
+    "baseline_time": 3.1649110317230225,
+    "tta_time": 1.7705929279327393,
+    "regime_time": 1.466813325881958,
+    "n_batches": 6
+  },
+  "synth_covid_shock_013": {
+    "dataset": "synth_covid_shock_013",
+    "baseline_mape": 8.098815740347598,
+    "tta_mape": 15.156035584568713,
+    "regime_mape": 15.875802117436393,
+    "baseline_time": 3.9595329761505127,
+    "tta_time": 1.8337905406951904,
+    "regime_time": 0.24848079681396484,
+    "n_batches": 6
+  },
+  "synth_recurring_014": {
+    "dataset": "synth_recurring_014",
+    "baseline_mape": 17.983741585401685,
+    "tta_mape": 19.03024441501523,
+    "regime_mape": 21.725716109332296,
+    "baseline_time": 2.837268114089966,
+    "tta_time": 1.5868616104125977,
+    "regime_time": 0.05211949348449707,
+    "n_batches": 6
+  },
+  "synth_multi_regime_015": {
+    "dataset": "synth_multi_regime_015",
+    "baseline_mape": 36.264282192541735,
+    "tta_mape": 24.08980152395841,
+    "regime_mape": 20.61850531444552,
+    "baseline_time": 3.2232539653778076,
+    "tta_time": 2.166632652282715,
+    "regime_time": 2.0970447063446045,
+    "n_batches": 6
+  },
+  "synth_covid_shock_016": {
+    "dataset": "synth_covid_shock_016",
+    "baseline_mape": 11.078139012930288,
+    "tta_mape": 10.874179779743557,
+    "regime_mape": 20.739251283033408,
+    "baseline_time": 3.0127487182617188,
+    "tta_time": 1.329359531402588,
+    "regime_time": 0.03988337516784668,
+    "n_batches": 6
+  },
+  "synth_recurring_017": {
+    "dataset": "synth_recurring_017",
+    "baseline_mape": 19.339253968812724,
+    "tta_mape": 18.889628093815485,
+    "regime_mape": 19.30059804958037,
+    "baseline_time": 8.070351123809814,
+    "tta_time": 2.7874343395233154,
+    "regime_time": 0.07861495018005371,
+    "n_batches": 6
+  },
+  "synth_multi_regime_018": {
+    "dataset": "synth_multi_regime_018",
+    "baseline_mape": 28.247577672330475,
+    "tta_mape": 28.666446417702243,
+    "regime_mape": 17.25385289993197,
+    "baseline_time": 4.516010284423828,
+    "tta_time": 3.777815103530884,
+    "regime_time": 2.68530011177063,
+    "n_batches": 6
+  },
+  "synth_covid_shock_019": {
+    "dataset": "synth_covid_shock_019",
+    "baseline_mape": 8.203108880449069,
+    "tta_mape": 13.017925902891221,
+    "regime_mape": 9.635283490269314,
+    "baseline_time": 5.4118123054504395,
+    "tta_time": 2.5042006969451904,
+    "regime_time": 0.14147520065307617,
+    "n_batches": 6
+  },
+  "stock_AAPL": {
+    "dataset": "stock_AAPL",
+    "baseline_mape": 28.634773798465858,
+    "tta_mape": 12.745464958326139,
+    "regime_mape": 26.962155351777746,
+    "baseline_time": 6.25728702545166,
+    "tta_time": 2.8073747158050537,
+    "regime_time": 5.115576505661011,
+    "n_batches": 5
+  },
+  "stock_MSFT": {
+    "dataset": "stock_MSFT",
+    "baseline_mape": 30.47919707356529,
+    "tta_mape": 12.40278191594843,
+    "regime_mape": 38.622218216158146,
+    "baseline_time": 2.927791118621826,
+    "tta_time": 1.5875959396362305,
+    "regime_time": 3.525487184524536,
+    "n_batches": 5
+  },
+  "stock_GOOGL": {
+    "dataset": "stock_GOOGL",
+    "baseline_mape": 7.283204338966011,
+    "tta_mape": 6.098785172705388,
+    "regime_mape": 8.238667962961523,
+    "baseline_time": 2.4431099891662598,
+    "tta_time": 1.419874906539917,
+    "regime_time": 0.05874800682067871,
+    "n_batches": 5
+  },
+  "stock_AMZN": {
+    "dataset": "stock_AMZN",
+    "baseline_mape": 40.541618965419666,
+    "tta_mape": 34.10159540304922,
+    "regime_mape": 39.281013773865496,
+    "baseline_time": 3.7903568744659424,
+    "tta_time": 2.0546016693115234,
+    "regime_time": 3.5293564796447754,
+    "n_batches": 5
+  },
+  "stock_TSLA": {
+    "dataset": "stock_TSLA",
+    "baseline_mape": 34.21716868904231,
+    "tta_mape": 21.477008314858775,
+    "regime_mape": 38.73816254014029,
+    "baseline_time": 3.642944097518921,
+    "tta_time": 1.9670846462249756,
+    "regime_time": 3.797121047973633,
+    "n_batches": 5
+  },
+  "stock_JPM": {
+    "dataset": "stock_JPM",
+    "baseline_mape": 10.739987403950085,
+    "tta_mape": 9.178164432368003,
+    "regime_mape": 12.915500109374474,
+    "baseline_time": 3.0991759300231934,
+    "tta_time": 1.9424383640289307,
+    "regime_time": 0.07719016075134277,
+    "n_batches": 5
+  },
+  "stock_XOM": {
+    "dataset": "stock_XOM",
+    "baseline_mape": 54.34717762020775,
+    "tta_mape": 45.16603593840914,
+    "regime_mape": 87.35735257107554,
+    "baseline_time": 3.189913272857666,
+    "tta_time": 1.7334949970245361,
+    "regime_time": 3.109757900238037,
+    "n_batches": 5
+  },
+  "stock_SPY": {
+    "dataset": "stock_SPY",
+    "baseline_mape": 7.760159147469452,
+    "tta_mape": 9.282303855725711,
+    "regime_mape": 10.085285131448014,
+    "baseline_time": 4.099704265594482,
+    "tta_time": 2.220773696899414,
+    "regime_time": 0.07068443298339844,
+    "n_batches": 5
+  },
+  "econ_UNRATE": {
+    "dataset": "econ_UNRATE",
+    "baseline_mape": 37.40000071709553,
+    "tta_mape": 18.684559141860625,
+    "regime_mape": 25.949173895058067,
+    "baseline_time": 2.823805570602417,
+    "tta_time": 1.936347246170044,
+    "regime_time": 2.550095558166504,
+    "n_batches": 5
+  },
+  "econ_INDPRO": {
+    "dataset": "econ_INDPRO",
+    "baseline_mape": 3.1183845063502034,
+    "tta_mape": 2.3192219306984705,
+    "regime_mape": 3.217467887725172,
+    "baseline_time": 3.1442301273345947,
+    "tta_time": 1.843287706375122,
+    "regime_time": 0.09475088119506836,
+    "n_batches": 5
+  },
+  "econ_HOUST": {
+    "dataset": "econ_HOUST",
+    "baseline_mape": 9.416164007647847,
+    "tta_mape": 6.432976575228798,
+    "regime_mape": 9.732731764562368,
+    "baseline_time": 4.504494667053223,
+    "tta_time": 2.9860832691192627,
+    "regime_time": 0.10711336135864258,
+    "n_batches": 5
+  },
+  "econ_RSXFS": {
+    "dataset": "econ_RSXFS",
+    "baseline_mape": 7.330165949151518,
+    "tta_mape": 8.202982263351592,
+    "regime_mape": 10.489176066158555,
+    "baseline_time": 3.4426119327545166,
+    "tta_time": 2.0903842449188232,
+    "regime_time": 0.08815789222717285,
+    "n_batches": 5
+  },
+  "econ_VEHICLE": {
+    "dataset": "econ_VEHICLE",
+    "baseline_mape": 4.273887290255256,
+    "tta_mape": 4.7821292401808275,
+    "regime_mape": 5.069291413967866,
+    "baseline_time": 5.25981879234314,
+    "tta_time": 2.307992458343506,
+    "regime_time": 0.17941045761108398,
+    "n_batches": 5
+  }
+}

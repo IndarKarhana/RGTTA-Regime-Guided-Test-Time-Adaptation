@@ -1,0 +1,23 @@
+# Ignore generated checkpoint folders
+checkpoints_*/
+
+# Ignore checkpoint dirs inside results (large binary files)
+results/*/ckpt_*
+
+# Ignore large JSON results (use CSV instead)
+results/*/unified_results.json
+
+# Ignore log files in results
+results/*.log
+
+# Ignore smoke test results (too many small dirs)
+results/smoke_*/
+
+# Ignore old/backup result dirs
+results/_old_runs_backup/
+results/unified_local_*/
+results/vm_run*/
+
+# Ignore pycache
+__pycache__/
+*.pyc
