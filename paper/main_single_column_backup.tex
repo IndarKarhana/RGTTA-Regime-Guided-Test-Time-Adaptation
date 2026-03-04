@@ -1,44 +1,38 @@
 % RG-TTA: Regime-Guided Meta-Control for Test-Time Adaptation in Streaming Time Series
 % Adapt author names and affiliations before submission.
-\documentclass[journal]{IEEEtran}
-
-% --- Core packages ---
+\documentclass[11pt,a4paper]{article}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{amsmath,amssymb,amsthm}
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{hyperref}
-\usepackage{cite}            % IEEE-style citations (replaces natbib)
+\usepackage{natbib}
+\usepackage[margin=1in]{geometry}
 \usepackage{xcolor}
 \usepackage{multirow}
 \usepackage{enumitem}
 \usepackage{algorithm}
 \usepackage{algorithmic}
-\usepackage[section]{placeins}
-\usepackage{balance}         % balance final page columns
-\usepackage{stfloats}        % enable bottom-of-page full-width floats
+\usepackage[section]{placeins}  % prevent floats from crossing section boundaries
 
-% --- Theorem environments (IEEEtran-compatible) ---
 \newtheorem{proposition}{Proposition}
 \newtheorem{theorem}{Theorem}
 \newtheorem{corollary}{Corollary}
 \newtheorem{definition}{Definition}
 
-% --- IEEEtran proof environment fix ---
-\renewenvironment{proof}[1][Proof]{\noindent\textit{#1.}\space}{\hfill$\blacksquare$\par\medskip}
+\title{RG-TTA: Regime-Guided Meta-Control for Test-Time Adaptation\\in Streaming Time Series}
+\author{
+  Indar Kumar \\  
+  Independent Researcher \\
+  \texttt{indarkarhana@gmail.com}
+}
+\date{}
 
 % Repository
 \newcommand{\repourl}{\url{https://github.com/IndarKarhana/RGTTA-Regime-Guided-Test-Time-Adaptation}}
 
 \begin{document}
-
-\title{RG-TTA: Regime-Guided Meta-Control for Test-Time Adaptation in Streaming Time Series}
-
-\author{Indar~Kumar%
-\thanks{Preprint. Code and data: \repourl.}%
-\thanks{I.~Kumar is an independent researcher (e-mail: indarkarhana@gmail.com).}}
-
 \maketitle
 
 % ============================================================
@@ -58,7 +52,7 @@ Regime-guided policies achieve the lowest MSE in \textbf{156 of 224} seed-averag
 \label{sec:intro}
 % ============================================================
 
-Time series forecasting in production is inherently incremental: data arrives in batches, and the system must decide how to update its model~\cite{lim2021timeseries,benidis2023deep}. Test-time adaptation (TTA)~\cite{liang2024tta} has emerged as a practical approach, applying a fixed number of gradient steps to each incoming batch. Recent work has improved upon fixed TTA: TAFAS~\cite{kim2025tafas} freezes the source model and learns calibration modules (GCMs) that adapt predictions, while DynaTTA~\cite{grover2025dynatta} dynamically adjusts the learning rate based on prediction-error z-scores and embedding drift.
+Time series forecasting in production is inherently incremental: data arrives in batches, and the system must decide how to update its model~\citep{lim2021timeseries,benidis2023deep}. Test-time adaptation (TTA)~\citep{liang2024tta} has emerged as a practical approach, applying a fixed number of gradient steps to each incoming batch. Recent work has improved upon fixed TTA: TAFAS~\citep{kim2025tafas} freezes the source model and learns calibration modules (GCMs) that adapt predictions, while DynaTTA~\citep{grover2025dynatta} dynamically adjusts the learning rate based on prediction-error z-scores and embedding drift.
 
 However, DynaTTA (and similar reactive methods) \emph{react} to current performance signals without asking the \emph{proactive} question: \textit{has the system seen this distribution before?} If a previously-encountered regime recurs, the highest-accuracy strategy is to load the checkpoint trained for that regime---not to re-adapt from a potentially stale model, which wastes gradient budget re-learning patterns that were already captured.
 
@@ -90,20 +84,20 @@ Our contributions are:
 % ============================================================
 
 \paragraph{Test-time adaptation for time series.}
-TTA~\cite{liang2024tta} adapts a pre-trained model to test-time distribution shifts by running additional gradient steps. In the time series setting, TAFAS~\cite{kim2025tafas} proposes freezing the source model and training lightweight \emph{Gated Calibration Modules} (GCMs) that adjust inputs and outputs to the current distribution, using only pseudo-labels from the model's own predictions (POGT loss). DynaTTA~\cite{grover2025dynatta} extends TAFAS with a dynamic learning rate computed via a sigmoid transformation of three shift metrics: prediction-error z-score, and distances to recent (RTAB) and representative (RDB) embedding buffers. Both methods are \emph{reactive}---they adjust to the current batch based on real-time error and drift signals. RG-TTA adds a \emph{proactive} layer: it identifies whether the current distribution has been seen before and adapts its strategy accordingly. RG-TTA composes naturally with DynaTTA (RG-DynaTTA); we demonstrate this as a two-level controller.
+TTA~\citep{liang2024tta} adapts a pre-trained model to test-time distribution shifts by running additional gradient steps. In the time series setting, TAFAS~\citep{kim2025tafas} proposes freezing the source model and training lightweight \emph{Gated Calibration Modules} (GCMs) that adjust inputs and outputs to the current distribution, using only pseudo-labels from the model's own predictions (POGT loss). DynaTTA~\citep{grover2025dynatta} extends TAFAS with a dynamic learning rate computed via a sigmoid transformation of three shift metrics: prediction-error z-score, and distances to recent (RTAB) and representative (RDB) embedding buffers. Both methods are \emph{reactive}---they adjust to the current batch based on real-time error and drift signals. RG-TTA adds a \emph{proactive} layer: it identifies whether the current distribution has been seen before and adapts its strategy accordingly. RG-TTA composes naturally with DynaTTA (RG-DynaTTA); we demonstrate this as a two-level controller.
 
 \textbf{Reimplementation note.} DynaTTA's official codebase (\texttt{shivam-grover/DynaTTA}) implements the dynamic learning rate \emph{within} the TAFAS framework---tightly coupled with GCM calibration modules, the POGT pseudo-label loss, and a sliding-window evaluation harness. No standalone library or modular API is provided. Because our study requires a model-agnostic streaming evaluation pipeline that applies each update policy to the same frozen-backbone base model, we reimplemented DynaTTA's Algorithm~1 (dynamic LR via sigmoid of prediction-error z-score, RTAB/RDB embedding distances, and EMA smoothing) from the published description. Our implementation reproduces the published formula exactly with the published hyperparameters ($\alpha_{\min}=10^{-4}$, $\alpha_{\max}=10^{-3}$, $\kappa=1.0$, $\eta=0.1$). We validate on the same architectures targeted by DynaTTA (iTransformer, PatchTST). We note that DynaTTA's EMA coefficient ($\eta=0.1$) requires $\sim$22 gradient steps to converge, a design choice suited to the 500-window sliding-window protocol used in its original evaluation. Under our streaming protocol (10 batches per run), the EMA does not converge within the available budget, leaving the dynamic LR below TTA's fixed rate for the first 5--6 batches. This is a \emph{protocol-level mismatch}, not an implementation error (see Limitations~\S\ref{sec:limitations}, item~7).
 
-TAFAS~\cite{kim2025tafas} is a strong baseline at short horizons (H$\leq$192) where its frozen-source GCM calibration excels, but its performance collapses at longer horizons (H=336/720, $+$100--400\% vs TTA in our experiments)---a consequence of its design for sliding-window evaluation. Because our study spans H$\in$\{96,192,336,720\}, we include TAFAS as a reference policy but exclude it from the primary 6-policy comparison.
+TAFAS~\citep{kim2025tafas} is a strong baseline at short horizons (H$\leq$192) where its frozen-source GCM calibration excels, but its performance collapses at longer horizons (H=336/720, $+$100--400\% vs TTA in our experiments)---a consequence of its design for sliding-window evaluation. Because our study spans H$\in$\{96,192,336,720\}, we include TAFAS as a reference policy but exclude it from the primary 6-policy comparison.
 
 \paragraph{Continual learning and catastrophic forgetting.}
-Continual learning~\cite{parisi2019continual,mccloskey1989catastrophic} addresses the problem of updating a model on sequential tasks without forgetting old knowledge. EWC~\cite{kirkpatrick2017ewc} penalises changes to parameters important for previous tasks via the diagonal Fisher Information Matrix. Synaptic Intelligence~\cite{zenke2017continual} tracks parameter importance online. Experience replay~\cite{rolnick2019experience} stores and re-uses past data samples. Progressive networks~\cite{rusu2016progressive} add capacity for new tasks. Our approach is complementary: rather than regularising a single model, RG-TTA maintains a \emph{library of checkpoints} indexed by distributional features and selects the appropriate one. When combined with EWC (RG-EWC), the regime-guided adaptation operates under EWC regularisation ($\lambda = 400$), preventing catastrophic forgetting while benefiting from checkpoint reuse and similarity-modulated learning rates.
+Continual learning~\citep{parisi2019continual,mccloskey1989catastrophic} addresses the problem of updating a model on sequential tasks without forgetting old knowledge. EWC~\citep{kirkpatrick2017ewc} penalises changes to parameters important for previous tasks via the diagonal Fisher Information Matrix. Synaptic Intelligence~\citep{zenke2017continual} tracks parameter importance online. Experience replay~\citep{rolnick2019experience} stores and re-uses past data samples. Progressive networks~\citep{rusu2016progressive} add capacity for new tasks. Our approach is complementary: rather than regularising a single model, RG-TTA maintains a \emph{library of checkpoints} indexed by distributional features and selects the appropriate one. When combined with EWC (RG-EWC), the regime-guided adaptation operates under EWC regularisation ($\lambda = 400$), preventing catastrophic forgetting while benefiting from checkpoint reuse and similarity-modulated learning rates.
 
 \paragraph{Concept drift and regime switching.}
-Concept drift detection~\cite{gama2014concept,lu2018concept,aminikhanghahi2017survey} identifies \emph{that} a distribution change occurred. Our approach extends this by detecting not just \emph{change} but \emph{recurrence}---whether the new distribution matches a previously-seen regime. Hamilton's Markov-switching model~\cite{hamilton1989} uses latent states for regime transitions but assumes a specific generative process. RG-TTA makes no parametric assumption: ``regime'' is defined operationally by a 5-dimensional distributional feature vector, and matching uses non-parametric statistical tests.
+Concept drift detection~\citep{gama2014concept,lu2018concept,aminikhanghahi2017survey} identifies \emph{that} a distribution change occurred. Our approach extends this by detecting not just \emph{change} but \emph{recurrence}---whether the new distribution matches a previously-seen regime. Hamilton's Markov-switching model~\citep{hamilton1989} uses latent states for regime transitions but assumes a specific generative process. RG-TTA makes no parametric assumption: ``regime'' is defined operationally by a 5-dimensional distributional feature vector, and matching uses non-parametric statistical tests.
 
 \paragraph{Time series forecasting architectures.}
-Recent neural forecasters---Informer~\cite{zhou2021informer}, Autoformer~\cite{wu2021autoformer}, iTransformer~\cite{liu2024itransformer}, PatchTST~\cite{nie2023patchtst}, DLinear~\cite{zeng2023dlinear}---advance accuracy but do not address the \emph{when-to-adapt} question. We evaluate RG-TTA across four compact model architectures spanning three model families---recurrent (GRU~\cite{cho2014gru}), attention-based (iTransformer, PatchTST), and linear (DLinear)---to validate model-agnosticism. Notably, iTransformer and PatchTST are the same modern Transformer architectures targeted by DynaTTA~\cite{grover2025dynatta}.
+Recent neural forecasters---Informer~\citep{zhou2021informer}, Autoformer~\citep{wu2021autoformer}, iTransformer~\citep{liu2024itransformer}, PatchTST~\citep{nie2023patchtst}, DLinear~\citep{zeng2023dlinear}---advance accuracy but do not address the \emph{when-to-adapt} question. We evaluate RG-TTA across four compact model architectures spanning three model families---recurrent (GRU~\citep{cho2014gru}), attention-based (iTransformer, PatchTST), and linear (DLinear)---to validate model-agnosticism. Notably, iTransformer and PatchTST are the same modern Transformer architectures targeted by DynaTTA~\citep{grover2025dynatta}.
 
 
 % ============================================================
@@ -113,12 +107,12 @@ Recent neural forecasters---Informer~\cite{zhou2021informer}, Autoformer~\cite{w
 
 Figure~\ref{fig:workflow} provides an end-to-end overview of the RG-TTA pipeline; its main components---distributional similarity (\S\ref{sec:similarity}), continuous regime-guided adaptation (\S\ref{sec:adaptation}), and checkpoint management (\S\ref{sec:checkpoints})---are detailed in the subsections below.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/workflow.pdf}
 \caption{RG-TTA system overview. For each incoming batch~$B_t$, the system extracts a distributional feature vector~$\mathbf{r}$ (Eq.~\ref{eq:features}) and computes a similarity score~$\text{sim}$ against stored regimes using a four-metric ensemble (Eq.~\ref{eq:ensemble}). If a high-similarity checkpoint passes the loss gate ($\ell_{\text{ckpt}} < 0.70\,\ell_{\text{curr}}$, Eq.~\ref{eq:gate}), it replaces the current model. The learning rate is smoothly modulated by similarity (Eq.~\ref{eq:lr}), and the output head is adapted with loss-driven early stopping (max~25 steps, patience~3). The adapted checkpoint and its regime features are stored in the memory~$\mathcal{M}$ (dashed box; 5~slots, FIFO eviction) for future reuse. See Algorithm~\ref{alg:rgtta} for pseudocode.}
 \label{fig:workflow}
-\end{figure*}
+\end{figure}
 
 \subsection{Problem Setup}
 
@@ -204,7 +198,7 @@ Algorithm~\ref{alg:rgtta} gives the pseudocode.
 \STATE patience $\leftarrow 0$
 \FOR{$k = 1$ to $K_{\max}$}
   \STATE $\hat{y} = f_{\theta_{\text{head}}}(X_t)$ \hfill \COMMENT{Backbone frozen; only output head updated}
-  \STATE $\mathcal{L} = \text{SmoothL1}(\hat{y}, y_t)$~\cite{huber1964robust} \hfill \COMMENT{+ optional EWC/DynaTTA terms}
+  \STATE $\mathcal{L} = \text{SmoothL1}(\hat{y}, y_t)$~\citep{huber1964robust} \hfill \COMMENT{+ optional EWC/DynaTTA terms}
   \STATE $\theta_{\text{head}} \leftarrow \theta_{\text{head}} - \alpha \nabla_{\theta_{\text{head}}} \mathcal{L}$
   \IF{$k \geq K_{\min}$ \AND $(\ell_{k-1} - \ell_k)/|\ell_{k-1}| < \epsilon$}
     \STATE patience $\leftarrow$ patience $+ 1$
@@ -223,7 +217,7 @@ Algorithm~\ref{alg:rgtta} gives the pseudocode.
 \subsection{RG-EWC: Regime-Guided EWC}
 \label{sec:rg_ewc}
 
-RG-EWC adds EWC regularisation~\cite{kirkpatrick2017ewc} to the RG-TTA framework. The total loss becomes:
+RG-EWC adds EWC regularisation~\citep{kirkpatrick2017ewc} to the RG-TTA framework. The total loss becomes:
 \begin{equation}
   \mathcal{L}_{\text{total}} = \mathcal{L}_{\text{task}} + \frac{\lambda}{2} \sum_i F_i (\theta_i - \theta^*_i)^2,
   \label{eq:ewc}
@@ -235,7 +229,7 @@ The key advantage of RG-EWC over standalone EWC is \emph{targeted adaptation}: E
 \subsection{RG-DynaTTA: Two-Level Controller}
 \label{sec:rg_dynatta}
 
-RG-DynaTTA combines \emph{proactive} regime detection (RG-TTA) with \emph{reactive} shift-magnitude sensing (DynaTTA~\cite{grover2025dynatta}). Instead of the similarity-based smooth LR (Eq.~\ref{eq:lr}), DynaTTA's sigmoid formula computes the actual LR based on three shift metrics (prediction-error z-score, RTAB/RDB embedding distances). This creates a two-level controller: RG-TTA provides checkpoint reuse and loss-driven early stopping; DynaTTA provides the continuous LR within $[\alpha_{\min}, \alpha_{\max}]$ based on current error signals.
+RG-DynaTTA combines \emph{proactive} regime detection (RG-TTA) with \emph{reactive} shift-magnitude sensing (DynaTTA~\citep{grover2025dynatta}). Instead of the similarity-based smooth LR (Eq.~\ref{eq:lr}), DynaTTA's sigmoid formula computes the actual LR based on three shift metrics (prediction-error z-score, RTAB/RDB embedding distances). This creates a two-level controller: RG-TTA provides checkpoint reuse and loss-driven early stopping; DynaTTA provides the continuous LR within $[\alpha_{\min}, \alpha_{\max}]$ based on current error signals.
 
 \subsection{Checkpoint Management}
 \label{sec:checkpoints}
@@ -283,7 +277,7 @@ where $\sigma^2_t = \mathbb{E}_{P_t}[\|y - h_{\phi^*_t}(g_\psi(x))\|^2]$ is the 
 \end{theorem}
 
 \begin{proof}
-Under $\mu$-strong convexity and $L$-smoothness, gradient descent with $\alpha \leq 2/(\mu + L)$ satisfies the standard contraction~\cite{nesterov2004introductory}:
+Under $\mu$-strong convexity and $L$-smoothness, gradient descent with $\alpha \leq 2/(\mu + L)$ satisfies the standard contraction~\citep{nesterov2004introductory}:
 $\|\phi_{k+1} - \phi^*_t\|^2 \leq \rho^2 \|\phi_k - \phi^*_t\|^2$ with $\rho = (L - \mu)/(L + \mu) = (\kappa - 1)/(\kappa + 1) = 1 - 2\mu\alpha/(1 + \mu\alpha)$ at the optimal step size $\alpha^* = 2/(\mu + L)$.
 Iterating $K$ times yields Eq.~\ref{eq:gd_rate}. The MSE decomposition follows from expanding $\mathbb{E}[\ell(\phi_K)]$ around $\phi^*_t$ and using the second-order Taylor approximation of the loss.
 \end{proof}
@@ -338,7 +332,7 @@ where $R(\hat{f}) = \mathbb{E}_{P_t}[\ell(\hat{f}(x), y)]$ is the population ris
 \end{theorem}
 
 \begin{proof}
-The proof follows the standard Rademacher complexity argument~\cite{bartlett2002rademacher}. Since $g_{\psi^*}$ is fixed, the hypothesis class $\mathcal{F}_{\text{frozen}}$ is a linear class in the representation space $g_{\psi^*}(\mathcal{X})$. By Talagrand's contraction lemma and the Rademacher complexity of linear classes with bounded Frobenius norm~\cite{bartlett2002rademacher}, we obtain Eq.~\ref{eq:rademacher}. The generalisation bound Eq.~\ref{eq:gen_bound} follows from McDiarmid's inequality.
+The proof follows the standard Rademacher complexity argument~\citep{bartlett2002rademacher}. Since $g_{\psi^*}$ is fixed, the hypothesis class $\mathcal{F}_{\text{frozen}}$ is a linear class in the representation space $g_{\psi^*}(\mathcal{X})$. By Talagrand's contraction lemma and the Rademacher complexity of linear classes with bounded Frobenius norm~\citep{bartlett2002rademacher}, we obtain Eq.~\ref{eq:rademacher}. The generalisation bound Eq.~\ref{eq:gen_bound} follows from McDiarmid's inequality.
 \end{proof}
 
 \paragraph{Comparison with full-model adaptation.} For the full class $\mathcal{F}_{\text{full}}$ with $d_{\text{total}}$ free parameters, the covering-number argument gives $\hat{\mathfrak{R}}_n(\ell \circ \mathcal{F}_{\text{full}}) = O\big(\sqrt{d_{\text{total}} \log n / n}\big)$. The ratio of complexities is:
@@ -364,7 +358,7 @@ The ensemble similarity $\textup{sim}(\cdot, \cdot)$ defined in Eq.~\ref{eq:ense
 \end{proposition}
 
 \begin{proof}
-Properties 1--3 are immediate from the definitions of the component metrics: $D_n \in [0,1]$ (KS statistic), $W_1 \geq 0$ (Wasserstein-1), and the normalised forms (Eqs.~3--5) are each bounded in $[0,1]$; any convex combination inherits these properties. Property~4 follows from the Glivenko--Cantelli theorem~\cite{vaart1998asymptotic} for the KS component ($\sup_x |F_n(x) - F(x)| \xrightarrow{\text{a.s.}} 0$) and the convergence of the empirical Wasserstein-1 distance on the real line~\cite{bobkov2019onedimensional}. For property~5: $\textup{sim}_{\text{KS}} = 1$ implies $D_n = 0$, i.e., $F_P = F_Q$, which uniquely determines $P = Q$ for continuous distributions by the one-to-one correspondence between CDFs and distributions.
+Properties 1--3 are immediate from the definitions of the component metrics: $D_n \in [0,1]$ (KS statistic), $W_1 \geq 0$ (Wasserstein-1), and the normalised forms (Eqs.~3--5) are each bounded in $[0,1]$; any convex combination inherits these properties. Property~4 follows from the Glivenko--Cantelli theorem~\citep{vaart1998asymptotic} for the KS component ($\sup_x |F_n(x) - F(x)| \xrightarrow{\text{a.s.}} 0$) and the convergence of the empirical Wasserstein-1 distance on the real line~\citep{bobkov2019onedimensional}. For property~5: $\textup{sim}_{\text{KS}} = 1$ implies $D_n = 0$, i.e., $F_P = F_Q$, which uniquely determines $P = Q$ for continuous distributions by the one-to-one correspondence between CDFs and distributions.
 \end{proof}
 
 \paragraph{Complementary sensitivity.} The four components detect different shift types: KS is most sensitive to shape changes (symmetry, modality), Wasserstein-1 to location-scale shifts, the feature-distance metric to higher-order moment changes (kurtosis, autocorrelation), and the variance ratio to pure volatility shifts. The ensemble achieves strictly better robustness than any single metric (Table~\ref{tab:sim_ablation}), improving over the best single component by 1.8\% MSE and over the worst (feature-only, our v0 design) by 8.3\%.
@@ -398,7 +392,7 @@ This formalises the dual-gate design: the similarity threshold ($s \geq 0.75$) s
 
 We evaluate on 14 datasets spanning two categories:
 
-\paragraph{Real-world benchmarks (6).} ETTh1, ETTh2 (hourly, 17,420 rows), ETTm1, ETTm2 (15-minute, 69,680 rows)~\cite{zhou2021informer}, Weather (52,696 rows, 21 features), and Exchange (7,588 rows, 8 currencies). These are standard benchmarks used by DynaTTA~\cite{grover2025dynatta} and TAFAS~\cite{kim2025tafas}; we overlap on 6 of their 7 datasets (missing only Illness).
+\paragraph{Real-world benchmarks (6).} ETTh1, ETTh2 (hourly, 17,420 rows), ETTm1, ETTm2 (15-minute, 69,680 rows)~\citep{zhou2021informer}, Weather (52,696 rows, 21 features), and Exchange (7,588 rows, 8 currencies). These are standard benchmarks used by DynaTTA~\citep{grover2025dynatta} and TAFAS~\citep{kim2025tafas}; we overlap on 6 of their 7 datasets (missing only Illness).
 
 \paragraph{Synthetic regime scenarios (8).} Purpose-built series that isolate specific adaptation challenges:
 \begin{itemize}[nosep]
@@ -426,9 +420,9 @@ To validate model-agnosticism, we test 4 compact model architectures (\textbf{37
 Key & Architecture & Parameters & Family \\
 \midrule
 \texttt{gru\_small} & 2-layer GRU + MLP head & ${\sim}71$K & Recurrent \\
-\texttt{itransformer} & iTransformer~\cite{liu2024itransformer} & ${\sim}123$K & Attention \\
-\texttt{patchtst} & PatchTST~\cite{nie2023patchtst} & ${\sim}192$K & Attention \\
-\texttt{dlinear} & DLinear~\cite{zeng2023dlinear} & ${\sim}37$K--$1.2$M & Linear \\
+\texttt{itransformer} & iTransformer~\citep{liu2024itransformer} & ${\sim}123$K & Attention \\
+\texttt{patchtst} & PatchTST~\citep{nie2023patchtst} & ${\sim}192$K & Attention \\
+\texttt{dlinear} & DLinear~\citep{zeng2023dlinear} & ${\sim}37$K--$1.2$M & Linear \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -471,11 +465,11 @@ Each RG-variant differs from its baseline only in adding the regime-guidance lay
 
 \paragraph{Streaming protocol.} Initial training on 720 rows, then sequential processing of up to 10 batches of 750 rows each. Each policy receives the same batches in order, updates its model, and predicts the next $H$ values. For hourly data, the initial 720 rows correspond to $\sim$30 days; each batch represents $\sim$31 days; the full sequence spans $\sim$11 months of deployment.
 
-\paragraph{Why streaming evaluation.} We evaluate under the streaming protocol exclusively because it reflects how forecasting systems operate in production: data arrives in discrete batches (e.g., daily or weekly), the system must update and produce forecasts before the next batch arrives, and adaptation decisions accumulate over time. This is the standard deployment model for energy forecasting (ETT datasets), weather services, and financial trading desks. The sliding-window protocol used by DynaTTA~\cite{grover2025dynatta} and TAFAS~\cite{kim2025tafas}---where each window receives exactly one gradient step---is a useful offline evaluation tool but does not reflect how practitioners deploy TTA: no production system retrains from a sliding window of 500 overlapping samples. Furthermore, the sliding-window protocol structurally neutralises RG-TTA's key contributions: (i)~checkpoint reuse becomes counterproductive because the model changes by only one gradient step between windows, (ii)~early stopping is irrelevant when the budget is always 1 step, and (iii)~regime memory cannot build because consecutive windows overlap by $>$99\%. Our streaming protocol preserves the full decision space---\emph{how many steps}, \emph{at what learning rate}, and \emph{from which starting point}---allowing all policies to exercise their complete strategies.
+\paragraph{Why streaming evaluation.} We evaluate under the streaming protocol exclusively because it reflects how forecasting systems operate in production: data arrives in discrete batches (e.g., daily or weekly), the system must update and produce forecasts before the next batch arrives, and adaptation decisions accumulate over time. This is the standard deployment model for energy forecasting (ETT datasets), weather services, and financial trading desks. The sliding-window protocol used by DynaTTA~\citep{grover2025dynatta} and TAFAS~\citep{kim2025tafas}---where each window receives exactly one gradient step---is a useful offline evaluation tool but does not reflect how practitioners deploy TTA: no production system retrains from a sliding window of 500 overlapping samples. Furthermore, the sliding-window protocol structurally neutralises RG-TTA's key contributions: (i)~checkpoint reuse becomes counterproductive because the model changes by only one gradient step between windows, (ii)~early stopping is irrelevant when the budget is always 1 step, and (iii)~regime memory cannot build because consecutive windows overlap by $>$99\%. Our streaming protocol preserves the full decision space---\emph{how many steps}, \emph{at what learning rate}, and \emph{from which starting point}---allowing all policies to exercise their complete strategies.
 
 \subsection{Metrics}
 
-We report MSE, MAE, RMSE, sMAPE, wMAPE (weighted MAPE with exponential recency weights), and direction accuracy. All metrics are averaged across batches within each experiment, then across 3 random seeds. Statistical significance is assessed via Wilcoxon signed-rank tests~\cite{wilcoxon1945} with Bonferroni correction for multiple comparisons. Overall policy ranking uses the Friedman test~\cite{friedman1937} with Nemenyi post-hoc, following \cite{demsar2006statistical}.
+We report MSE, MAE, RMSE, sMAPE, wMAPE (weighted MAPE with exponential recency weights), and direction accuracy. All metrics are averaged across batches within each experiment, then across 3 random seeds. Statistical significance is assessed via Wilcoxon signed-rank tests~\citep{wilcoxon1945} with Bonferroni correction for multiple comparisons. Overall policy ranking uses the Friedman test~\citep{friedman1937} with Nemenyi post-hoc, following \citet{demsar2006statistical}.
 
 
 % ============================================================
@@ -515,9 +509,9 @@ DynaTTA & 9 & 4.0\% \\
 
 Table~\ref{tab:pairwise} isolates the effect of adding regime-guidance to each baseline by comparing matched pairs.
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
-\caption{Head-to-head: each baseline vs its regime-guided variant. $\Delta$MSE is average relative change (negative = RG-variant is better). Wins = experiments where the RG-variant achieves lower MSE. $p$-values from one-sided Wilcoxon signed-rank tests \cite{wilcoxon1945} with Bonferroni correction ($\alpha = 0.05/3$).}
+\caption{Head-to-head: each baseline vs its regime-guided variant. $\Delta$MSE is average relative change (negative = RG-variant is better). Wins = experiments where the RG-variant achieves lower MSE. $p$-values from one-sided Wilcoxon signed-rank tests~\citep{wilcoxon1945} with Bonferroni correction ($\alpha = 0.05/3$).}
 \label{tab:pairwise}
 \small
 \begin{tabular}{llcccc}
@@ -531,17 +525,18 @@ DynaTTA & RG-DynaTTA & $+0.5\%$ & $-3.8\%$ & 139/224 (62.1\%) & $6.8{\times}10^{
 \end{tabular}
 \vspace{2pt}
 \par\footnotesize ***$p<0.001$, **$p<0.01$. All three pairs significant after Bonferroni correction.
-\end{table*}
+\end{table}
 
 RG-EWC shows the strongest regime-guidance benefit: $-14.1\%$ MSE reduction with 75.4\% win rate. For RG-DynaTTA, the average improvement is near zero (skewed by synthetic outliers with extreme scale), but the \emph{median} improvement is $-3.8\%$ and it wins 62.1\% of experiments, indicating consistent benefit. All three improvements are statistically significant (Wilcoxon signed-rank, $p < 0.007$, Bonferroni-corrected; Table~\ref{tab:pairwise}). The regime-guidance layer improves all three base methods---the composability claim holds empirically. Figure~\ref{fig:pairwise} visualises these pair-wise effects.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/pairwise_improvement.pdf}
+\includegraphics[width=0.85\textwidth]{figures/pairwise_improvement.pdf}
 \caption{Pair-wise MSE change from adding regime-guidance. Negative values indicate improvement. All three pairs are statistically significant (Wilcoxon, Bonferroni-corrected).}
 \label{fig:pairwise}
 \end{figure}
 
+\clearpage
 \subsection{MSE by Model Architecture}
 
 Table~\ref{tab:main} reports average MSE across all 14 datasets and 4 horizons, broken down by model architecture.
@@ -568,31 +563,32 @@ DynaTTA & 16,076 & 20,808 & 874,257 & 17,185 \\
 
 RG-TTA and RG-EWC are best on GRU-Small ($-8.8\%$ and $-9.1\%$ vs TTA) and iTransformer ($-8.9\%$ and $-10.6\%$). On PatchTST, policies cluster tightly (TTA edges RG-TTA by $<0.2\%$). On DLinear, RG-DynaTTA wins ($-2.6\%$ vs DynaTTA). The advantage is strongest on recurrent models where the frozen backbone preserves reusable temporal features. Figure~\ref{fig:model_comp} provides a visual comparison on real-world data.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=0.95\textwidth]{figures/model_comparison.pdf}
+\includegraphics[width=0.85\textwidth]{figures/model_comparison.pdf}
 \caption{Real-world MSE by model architecture and policy. RG-TTA and RG-EWC dominate on GRU-Small and iTransformer; DLinear benefits most from RG-DynaTTA.}
 \label{fig:model_comp}
-\end{figure*}
+\end{figure}
 
 \subsection{Statistical Ranking}
 
-To rigorously compare all 6 policies simultaneously, we apply the Friedman test~\cite{friedman1937,demsar2006statistical} across 224 seed-averaged experiments. The null hypothesis that all policies perform equivalently is overwhelmingly rejected ($\chi^2 = 301.95$, $p = 3.81 \times 10^{-63}$). Average ranks (lower is better): RG-TTA 2.46, RG-EWC 2.51, TTA 2.98, EWC 4.02, RG-DynaTTA 4.34, DynaTTA 4.69.
+To rigorously compare all 6 policies simultaneously, we apply the Friedman test~\citep{friedman1937,demsar2006statistical} across 224 seed-averaged experiments. The null hypothesis that all policies perform equivalently is overwhelmingly rejected ($\chi^2 = 301.95$, $p = 3.81 \times 10^{-63}$). Average ranks (lower is better): RG-TTA 2.46, RG-EWC 2.51, TTA 2.98, EWC 4.02, RG-DynaTTA 4.34, DynaTTA 4.69.
 
 The Nemenyi post-hoc test (critical difference CD $= 0.50$ at $\alpha = 0.05$) confirms that RG-TTA and RG-EWC are statistically indistinguishable from each other, and both are significantly better than TTA, EWC, DynaTTA, and RG-DynaTTA. Figure~\ref{fig:cd} shows the critical difference diagram.
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/critical_difference.pdf}
+\includegraphics[width=0.85\textwidth]{figures/critical_difference.pdf}
 \caption{Dem\v{s}ar-style critical difference diagram (Nemenyi, $\alpha=0.05$). Connected policies are not significantly different. RG-TTA and RG-EWC rank best (2.46, 2.51).}
 \label{fig:cd}
 \end{figure}
 
+\clearpage
 \subsection{Real-World Benchmark Results}
 
 Table~\ref{tab:realworld} focuses on the 6 standard real-world datasets, which are most relevant for practitioners.
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \caption{Average MSE on real-world datasets (ETT, Weather, Exchange), averaged over 4 horizons, 4 models, and 3 seeds. \textbf{Bold} = best per column.}
 \label{tab:realworld}
@@ -610,7 +606,7 @@ DynaTTA & 89.29 & 130.18 & 24.62 & 45.49 & 164.37 & 0.01 \\
 \textbf{RG-DynaTTA} & 79.90 & 127.21 & 25.22 & 41.79 & 175.31 & 0.01 \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 On real-world data, RG-TTA and RG-EWC achieve the best or second-best MSE on 5 of 6 datasets. The exception is \textbf{Weather}, where TTA wins (138.99 vs RG-TTA's 145.21). Weather's 21-feature multivariate structure and gradual drift pattern favour continuous fixed-step adaptation over similarity-modulated updates. On \textbf{Exchange} (8 currency pairs, random-walk dynamics), all policies perform identically---confirming that regime-guidance neither helps nor hurts when there are no recurring distributional patterns.
 
@@ -655,18 +651,19 @@ The 100\% win rate on \texttt{synth\_recurring} demonstrates RG-TTA's effectiven
 
 Figure~\ref{fig:heatmap} provides a per-dataset heatmap of win rates.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\includegraphics[width=0.95\textwidth]{figures/dataset_heatmap.pdf}
+\includegraphics[width=0.85\textwidth]{figures/dataset_heatmap.pdf}
 \caption{Per-dataset win rate (\%) by policy. Real-world datasets (top) and synthetic (bottom) show similar patterns: RG-TTA and RG-EWC dominate most datasets.}
 \label{fig:heatmap}
-\end{figure*}
+\end{figure}
 
+\clearpage
 \subsection{Computational Cost}
 
 Table~\ref{tab:time} reports wall-clock time.
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \caption{Average total adaptation time (seconds) per experiment, by policy and model. Lower is better.}
 \label{tab:time}
@@ -684,16 +681,16 @@ DynaTTA & 121.9 & 34.7 & 411.8 & 17.2 & 146.4 \\
 \textbf{RG-DynaTTA} & 129.0 & 36.9 & 421.2 & 17.0 & 151.0 \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 RG-TTA is \emph{faster} than all baselines (126.9s vs TTA's 134.3s, $-5.5\%$), thanks to early stopping: on familiar batches, RG-TTA converges in fewer steps than TTA's fixed 20. RG-EWC is 15.3\% slower than EWC due to the combined overhead of similarity computation and Fisher-regularised gradient steps, but this is the price for a 14.1\% MSE improvement. The regime-detection overhead itself (computing KS/Wasserstein distances over a 5-entry checkpoint memory) is negligible: $<1$s per batch. Figure~\ref{fig:tradeoff} visualises the MSE--time trade-off.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/mse_vs_time.pdf}
 \caption{MSE vs adaptation time. Left: all 14 datasets; right: real-world only. RG-TTA achieves the best trade-off (lower MSE \emph{and} lower time). Square markers = regime-guided policies.}
 \label{fig:tradeoff}
-\end{figure*}
+\end{figure}
 
 \subsection{Horizon Scaling}
 
@@ -701,7 +698,7 @@ Figure~\ref{fig:horizon} shows MSE scaling across horizons. RG-TTA and RG-EWC ma
 
 \begin{figure}[t]
 \centering
-\includegraphics[width=\columnwidth]{figures/horizon_analysis.pdf}
+\includegraphics[width=0.95\textwidth]{figures/horizon_analysis.pdf}
 \caption{MSE scaling with forecast horizon. Left: all datasets; right: real-world only. RG-TTA and RG-EWC (solid lines) outperform baselines (dashed) across all horizons.}
 \label{fig:horizon}
 \end{figure}
@@ -809,7 +806,7 @@ Variance ratio only & +5.7\% \\
 
 \subsection{Architecture Sensitivity}
 
-Cross-model analysis reveals that the frozen-backbone paradigm interacts with architecture choice. On GRU-Small, RG-TTA achieves $-8.8\%$ MSE vs TTA; on iTransformer, $-8.9\%$. On PatchTST, the absolute differences are small ($<0.2\%$) because frozen attention layers limit all policies equally. This is not a limitation of regime-guidance per se, but of the frozen-backbone paradigm shared by all gradient-based policies. Exploring partial unfreezing or adapter modules~\cite{houlsby2019adapters} for attention layers is a promising direction.
+Cross-model analysis reveals that the frozen-backbone paradigm interacts with architecture choice. On GRU-Small, RG-TTA achieves $-8.8\%$ MSE vs TTA; on iTransformer, $-8.9\%$. On PatchTST, the absolute differences are small ($<0.2\%$) because frozen attention layers limit all policies equally. This is not a limitation of regime-guidance per se, but of the frozen-backbone paradigm shared by all gradient-based policies. Exploring partial unfreezing or adapter modules~\citep{houlsby2019adapters} for attention layers is a promising direction.
 
 \subsection{Component Contribution Analysis}
 \label{sec:component_contribution}
@@ -830,7 +827,7 @@ Checkpoint reuse is a valuable \emph{supplementary} mechanism that provides subs
 \subsection{Protocol Selection and Fairness}
 \label{sec:fairness}
 
-DynaTTA~\cite{grover2025dynatta} was designed for and evaluated under a sliding-window protocol with $\sim$500 windows per dataset. Its EMA smoothing coefficient ($\eta = 0.1$) requires approximately 22 gradient steps to converge, a design choice well-suited to that evaluation regime. Under our 10-batch streaming protocol, the EMA has insufficient warmup, leaving the dynamic learning rate below TTA's fixed rate for the first 5--6 batches.
+DynaTTA~\citep{grover2025dynatta} was designed for and evaluated under a sliding-window protocol with $\sim$500 windows per dataset. Its EMA smoothing coefficient ($\eta = 0.1$) requires approximately 22 gradient steps to converge, a design choice well-suited to that evaluation regime. Under our 10-batch streaming protocol, the EMA has insufficient warmup, leaving the dynamic learning rate below TTA's fixed rate for the first 5--6 batches.
 
 We acknowledge this protocol-level mismatch and take three steps to address fairness:
 
@@ -895,12 +892,12 @@ RG-TTA uses distributional similarity to modulate adaptation intensity, with che
 
 Figure~\ref{fig:behavior} illustrates the adaptation dynamics on a representative experiment (GRU-Small, ETTh2, H=96), showing how similarity scores modulate the learning rate and how RG-TTA's batch-wise MSE compares to baselines.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
 \includegraphics[width=0.95\textwidth]{figures/adaptation_behavior.pdf}
 \caption{Adaptation behaviour on ETTh2 (GRU-Small, H=96). \textbf{Top}: batch MSE across policies. \textbf{Middle}: regime similarity with checkpoint threshold (dashed red) and diagnostic tier boundaries. \textbf{Bottom}: RG-TTA's adaptive learning rate vs TTA's fixed rate. Higher similarity → lower LR (conservative); lower similarity → higher LR (aggressive).}
 \label{fig:behavior}
-\end{figure*}
+\end{figure}
 
 \subsection{When RG-TTA Loses}
 
@@ -926,7 +923,7 @@ Figure~\ref{fig:behavior} illustrates the adaptation dynamics on a representativ
   \item \textbf{Linear checkpoint scan.} Regime matching is $O(|\mathcal{M}|)$ with memory capped at 5; approximate nearest-neighbour indexing would be needed for larger stores.
   \item \textbf{Reimplemented baselines.} DynaTTA's official code (\texttt{shivam-grover/DynaTTA}) is tightly integrated with the TAFAS framework (GCM modules, POGT loss, sliding-window harness) and is not available as a standalone library. We reimplemented Algorithm~1's dynamic LR formula from the published description and verified the output trajectory against the official codebase. We evaluate on the same architectures (iTransformer, PatchTST) targeted by DynaTTA.
   \item \textbf{DynaTTA EMA convergence under streaming.} DynaTTA's EMA smoothing ($\eta=0.1$) was designed for 500-window sliding-window evaluation. Under our 10-batch streaming protocol, the EMA never converges, leaving the dynamic LR below TTA's fixed rate for the first 5--6 batches.
-  \item \textbf{Architecture-dependent frozen backbone.} Frozen-backbone TTA benefits recurrent and linear models but is less effective for attention-based architectures. Exploring adapter modules~\cite{houlsby2019adapters} is a promising direction.
+  \item \textbf{Architecture-dependent frozen backbone.} Frozen-backbone TTA benefits recurrent and linear models but is less effective for attention-based architectures. Exploring adapter modules~\citep{houlsby2019adapters} is a promising direction.
   \item \textbf{No retrain baseline.} Full retraining is prohibitively slow ($\sim$40$\times$ TTA) and was excluded from the primary comparison. Prior experiments show retrain accuracy is comparable to or worse than TTA on these datasets.
 \end{enumerate}
 
@@ -951,8 +948,7 @@ The practical recommendation is conditional: RG-TTA excels when data streams exh
 Code, data, and full reproducibility instructions: \repourl.
 
 
-\balance
-\bibliographystyle{IEEEtran}
+\bibliographystyle{plainnat}
 \bibliography{references}
 
 % ============================================================
@@ -962,7 +958,7 @@ Code, data, and full reproducibility instructions: \repourl.
 \section{Hyperparameter Configuration}
 \label{app:hyperparams}
 
-\begin{table*}[t]
+\begin{table}[t]
 \centering
 \caption{Full hyperparameter configuration across all policies.}
 \label{tab:hyperparams}
@@ -1013,7 +1009,7 @@ Component & Parameter & Value \\
 & DynaTTA: steps & 20 \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
 \section{Dataset Details}
 \label{app:datasets}
@@ -1027,10 +1023,10 @@ Component & Parameter & Value \\
 \toprule
 Dataset & Source & Rows & Frequency & Season length \\
 \midrule
-ETTh1, ETTh2 & \cite{zhou2021informer} & 17,420 & Hourly & 24 \\
-ETTm1, ETTm2 & \cite{zhou2021informer} & 69,680 & 15-min & 96 \\
+ETTh1, ETTh2 & \citet{zhou2021informer} & 17,420 & Hourly & 24 \\
+ETTm1, ETTm2 & \citet{zhou2021informer} & 69,680 & 15-min & 96 \\
 Weather & Wetterstation & 52,696 & 10-min & 144 \\
-Exchange & \cite{lai2018modeling} & 7,588 & Daily & 5 \\
+Exchange & \citet{lai2018modeling} & 7,588 & Daily & 5 \\
 \midrule
 synth\_* (8) & Generated & 10,000--25,200 & Synthetic & 50 \\
 \bottomrule

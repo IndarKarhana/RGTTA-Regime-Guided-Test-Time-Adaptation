@@ -1,0 +1,70 @@
+{
+  "never_retrain": {
+    "mean_train_time_s": 0.029167679150000004,
+    "total_train_time_s": 1.1667071660000001,
+    "mean_pred_time_s": 0.014534046774999986,
+    "mean_mape": 63.94597342702193,
+    "std_mape": 265.5567072916065,
+    "n_records": 40,
+    "n_training_triggered": 5,
+    "n_checkpoints_reused": 0,
+    "training_skip_rate": 0.875,
+    "max_checkpoints_stored": 0,
+    "avg_checkpoints_stored": 0.0
+  },
+  "always_finetune": {
+    "mean_train_time_s": 0.034476224924999944,
+    "total_train_time_s": 1.3790489969999977,
+    "mean_pred_time_s": 0.011813476125000033,
+    "mean_mape": 64.08123490062874,
+    "std_mape": 263.7640463418621,
+    "n_records": 40,
+    "n_training_triggered": 40,
+    "n_checkpoints_reused": 0,
+    "training_skip_rate": 0.0,
+    "max_checkpoints_stored": 0,
+    "avg_checkpoints_stored": 0.0
+  },
+  "regime_aware": {
+    "mean_train_time_s": 0.012869685299999966,
+    "total_train_time_s": 0.5147874119999987,
+    "mean_pred_time_s": 0.011650484424999963,
+    "mean_mape": 63.39728722923472,
+    "std_mape": 250.87755321895892,
+    "n_records": 40,
+    "n_training_triggered": 5,
+    "n_checkpoints_reused": 35,
+    "training_skip_rate": 0.875,
+    "max_checkpoints_stored": 1,
+    "avg_checkpoints_stored": 1.0
+  },
+  "time_saved_vs_always_finetune_pct": 62.67083960614348,
+  "wilcoxon_test_vs_finetune": {
+    "statistic": 168.0,
+    "p_value": 0.0007984068197401939,
+    "n_pairs": 40
+  },
+  "paired_ttest_vs_finetune": {
+    "statistic": 0.3302556041870059,
+    "p_value": 0.7429744206882364,
+    "n_pairs": 40
+  },
+  "config": {
+    "max_series": 5,
+    "initial_len": 48,
+    "increments": [
+      12,
+      8,
+      6,
+      10,
+      8,
+      12,
+      6
+    ],
+    "epochs": 10,
+    "season_length": 12,
+    "forecast_horizon": 6,
+    "sequence_length": 24,
+    "finetune_window": 36
+  }
+}
