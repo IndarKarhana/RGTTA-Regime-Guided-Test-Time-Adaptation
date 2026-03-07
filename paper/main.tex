@@ -49,7 +49,7 @@ Test-time adaptation (TTA) enables neural forecasters to adapt to distribution s
 
 RG-TTA is \emph{model-agnostic} and \emph{strategy-composable}: it wraps any forecaster exposing \texttt{train/predict/save/load} interfaces and enhances any gradient-based TTA method. We demonstrate three compositions---RG-TTA, RG-EWC, and RG-DynaTTA---and evaluate 6 update policies (3~baselines + 3~regime-guided variants) across 4 compact architectures (GRU, iTransformer, PatchTST, DLinear), 14 datasets (6~real-world multivariate benchmarks + 8~synthetic regime scenarios), and 4 forecast horizons (96, 192, 336, 720) under a streaming evaluation protocol with 3 random seeds (672 experiments total).
 
-Regime-guided policies achieve the lowest MSE in \textbf{156 of 224} seed-averaged experiments (\textbf{69.6\%}), with RG-EWC winning 30.4\% and RG-TTA winning 29.0\%. On real-world benchmarks, RG-TTA reduces MSE by 4.4\% vs TTA while running 5.5\% faster; RG-EWC reduces MSE by 14.1\% vs standalone EWC. The regime-guidance layer composes naturally with existing TTA methods, improving accuracy without modifying the underlying forecaster.\footnote{Code and data: \repourl}
+Regime-guided policies achieve the lowest MSE in \textbf{156 of 224} seed-averaged experiments (\textbf{69.6\%}), with RG-EWC winning 30.4\% and RG-TTA winning 29.0\%. On real-world benchmarks, RG-TTA reduces MSE by 4.4\% vs TTA while running 5.5\% faster; RG-EWC reduces MSE by 14.1\% vs standalone EWC. Against full retraining (672 additional experiments, 3 architectures excluding DLinear), RG policies achieve a median 27\% MSE reduction while running 15--30$\times$ faster, winning 71\% of seed-averaged configurations. The regime-guidance layer composes naturally with existing TTA methods, improving accuracy without modifying the underlying forecaster.\footnote{Code and data: \repourl}
 
 \end{abstract}
 
@@ -80,7 +80,7 @@ Our contributions are:
 \begin{enumerate}[nosep]
   \item A \textbf{continuous regime-guided adaptation policy} that modulates learning rate, step budget, and checkpoint reuse based on distributional similarity, using an ensemble of four complementary similarity metrics and loss-driven early stopping.
   \item A \textbf{composable meta-controller architecture} where regime-guidance wraps gradient-based adaptation methods, demonstrated with three compositions (RG-TTA, RG-EWC, RG-DynaTTA) targeting different accuracy--robustness trade-offs.
-  \item A \textbf{comprehensive benchmark} spanning 6 update policies, 4 compact model architectures, 14 datasets, 4 forecast horizons, and 3 random seeds (672 experiments)---the most thorough controlled comparison of TTA strategies for streaming time series forecasting to date.
+  \item A \textbf{comprehensive benchmark} spanning 6 update policies (plus full retraining), 4 compact model architectures, 14 datasets, 4 forecast horizons, and 3 random seeds (672 experiments, plus 672 retrain-baseline experiments)---the most thorough controlled comparison of TTA strategies for streaming time series forecasting to date.
 \end{enumerate}
 
 
@@ -467,6 +467,8 @@ All 6 policies receive identical data, use the same base model per experiment, a
 
 Each RG-variant differs from its baseline only in adding the regime-guidance layer (similarity-scaled LR, checkpoint reuse, early stopping). This isolates the contribution of regime-awareness.
 
+\paragraph{Full retrain baseline.} We additionally benchmark full retraining from scratch on all accumulated data at each batch, reported separately due to its 15--30$\times$ higher computational cost (\S\ref{sec:retrain_comparison}).
+
 \subsection{Evaluation Protocol}
 
 \paragraph{Streaming protocol.} Initial training on 720 rows, then sequential processing of up to 10 batches of 750 rows each. Each policy receives the same batches in order, updates its model, and predicts the next $H$ values. For hourly data, the initial 720 rows correspond to $\sim$30 days; each batch represents $\sim$31 days; the full sequence spans $\sim$11 months of deployment.
@@ -483,7 +485,7 @@ We report MSE, MAE, RMSE, sMAPE, wMAPE (weighted MAPE with exponential recency w
 \label{sec:results}
 % ============================================================
 
-We present results from 672 experiments (6~policies $\times$ 4~models $\times$ 14~datasets $\times$ 4~horizons $\times$ 3~seeds). All tables report seed-averaged values (224 unique experiments).
+We present results from 672 experiments (6~policies $\times$ 4~models $\times$ 14~datasets $\times$ 4~horizons $\times$ 3~seeds), plus 672 retrain-baseline experiments compared in \S\ref{sec:retrain_comparison}. All tables report seed-averaged values (224 unique experiments).
 
 \subsection{Overall Win Counts}
 
@@ -707,6 +709,20 @@ Figure~\ref{fig:horizon} shows MSE scaling across horizons. RG-TTA and RG-EWC ma
 \end{figure}
 
 
+\subsection{Comparison with Full Retraining}
+\label{sec:retrain_comparison}
+
+To assess whether TTA-based policies sacrifice accuracy relative to retraining from scratch on all accumulated data, we ran 672 additional retrain experiments using the same streaming protocol. DLinear retrain exhibited a convergence failure (all 168 experiments producing NaN), so we report results on the remaining 3 architectures (168 seed-averaged configurations).
+
+\paragraph{Overall.} Regime-guided policies outperform full retraining in 120 of 168 configurations (\textbf{71\%}), with a median MSE reduction of 27\%. The advantage is strongest on real-world data (median $-33\%$, wins 86\%) and on compact recurrent models.
+
+\paragraph{By architecture.} On GRU-Small, RG-EWC achieves a median 34\% MSE reduction vs retrain (wins 91\%); on iTransformer, the median reduction is 40\% (wins 84\%). On PatchTST, retrain wins 61\% of configurations (median $+16\%$ MSE for RG)---its larger output head benefits from the extended gradient budget of full retraining, particularly on high-variance synthetic datasets.
+
+\paragraph{Speed--accuracy trade-off.} RG-TTA runs 15--30$\times$ faster than retrain. Even the slower RG-EWC variant is $\sim$16$\times$ faster while achieving lower MSE on 70\% of configurations. The trade-off strongly favours regime-guided adaptation for deployment: comparable or better accuracy at a fraction of the computational cost.
+
+\paragraph{Per-dataset highlights.} RG policies dominate ETTh2 (median $-42\%$, wins 100\%), ETTm1 ($-46\%$, 100\%), and Exchange ($-57\%$, 100\%). Retrain's advantage is concentrated on synth\_volatility (median $+40\%$ for RG, retrain wins 83\%) and PatchTST on synthetic data, where high-variance regimes benefit from retraining on accumulated data.
+
+
 % ============================================================
 \section{Ablation Studies}
 \label{sec:ablation}
@@ -927,7 +943,7 @@ Figure~\ref{fig:behavior} illustrates the adaptation dynamics on a representativ
   \item \textbf{Reimplemented baselines.} DynaTTA's official code (\texttt{shivam-grover/DynaTTA}) is tightly integrated with the TAFAS framework (GCM modules, POGT loss, sliding-window harness) and is not available as a standalone library. We reimplemented Algorithm~1's dynamic LR formula from the published description and verified the output trajectory against the official codebase. We evaluate on the same architectures (iTransformer, PatchTST) targeted by DynaTTA.
   \item \textbf{DynaTTA EMA convergence under streaming.} DynaTTA's EMA smoothing ($\eta=0.1$) was designed for 500-window sliding-window evaluation. Under our 10-batch streaming protocol, the EMA never converges, leaving the dynamic LR below TTA's fixed rate for the first 5--6 batches.
   \item \textbf{Architecture-dependent frozen backbone.} Frozen-backbone TTA benefits recurrent and linear models but is less effective for attention-based architectures. Exploring adapter modules~\cite{houlsby2019adapters} is a promising direction.
-  \item \textbf{No retrain baseline.} Full retraining is prohibitively slow ($\sim$40$\times$ TTA) and was excluded from the primary comparison. Prior experiments show retrain accuracy is comparable to or worse than TTA on these datasets.
+  \item \textbf{Retrain comparison limited to 3 architectures.} Full retraining was benchmarked (672 experiments), but DLinear retrain exhibited a convergence failure (all 168 experiments producing NaN). On the remaining 3 architectures, RG policies outperform retrain overall (71\% win rate, median $-27\%$ MSE) but underperform on PatchTST (retrain wins 61\%, median $+16\%$). Retrain is 15--30$\times$ slower.
 \end{enumerate}
 
 
@@ -946,7 +962,7 @@ Across 672 experiments (6~policies $\times$ 4~architectures $\times$ 14~datasets
   \item \textbf{Regime-guidance is composable}: it improves TTA (67\% wins), EWC (75\% wins), and DynaTTA (62\% wins) as a drop-in meta-controller (Table~\ref{tab:pairwise}).
 \end{enumerate}
 
-The practical recommendation is conditional: RG-TTA excels when data streams exhibit recurring distributional regimes (ETT electricity data, periodic processes); for continuously drifting data without recurrence (Weather, financial random walks), reactive methods suffice. The regime-guidance layer is model-agnostic in interface requirements, though the frozen-backbone adaptation paradigm is most effective on recurrent and linear architectures.
+The practical recommendation is conditional: RG-TTA excels when data streams exhibit recurring distributional regimes (ETT electricity data, periodic processes); for continuously drifting data without recurrence (Weather, financial random walks), reactive methods suffice. Compared to full retraining, RG policies achieve lower MSE in 71\% of configurations (median $-27\%$) at 15--30$\times$ lower cost on GRU and iTransformer, though PatchTST benefits from retrain's extended gradient budget. The regime-guidance layer is model-agnostic in interface requirements, though the frozen-backbone adaptation paradigm is most effective on recurrent and linear architectures.
 
 Code, data, and full reproducibility instructions: \repourl.
 
