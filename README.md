@@ -44,13 +44,13 @@ The contribution is **not** a new model architecture — it is a **when-to-adapt
 
 When streaming time-series data arrives in batches, measuring distributional similarity to previously-seen regimes and using that similarity to *continuously control adaptation intensity* yields better accuracy and robustness than fixed-strategy baselines. Specifically:
 
-1. **Recurring regimes**: checkpoint reuse (specialist model) beats continuous adaptation (generalist model). On `synth_recurring`, RG-TTA achieves **100% win rate** vs all baselines.
+1. **Recurring regimes**: similarity-scaled LR (conservative on familiar batches, aggressive on novel ones) + early stopping outperforms fixed-intensity adaptation. On `synth_recurring`, RG-TTA achieves **100% win rate** vs all baselines — driven entirely by LR modulation, not checkpoint loading.
 2. **Smooth/stationary data**: regime-guided adaptation is at least as accurate as TTA, and often faster due to early stopping on already-familiar batches.
 3. **Novel distribution shocks**: aggressive adaptation (high LR from low similarity) + EWC regularisation preserves old knowledge while adapting to genuine shocks.
 
-### Why Specialist > Generalist on Recurring Data
+### Why Similarity-Scaled LR Wins on Recurring Data
 
-A specialist checkpoint trained on regime A data minimises the regime-specific risk. A generalist trained on all data minimises the mixture objective across regimes A, B, C, etc. When regime A recurs, the specialist incurs zero bias on A while the generalist must compromise across regimes. The expected excess risk of the generalist on A is bounded by the inter-regime distributional divergence. (See paper §4 Theorem 1 for the formal error bound, and §8 Proposition 3 for the specialist advantage.)
+When a familiar regime recurs, the similarity score is high, so RG-TTA assigns a conservative learning rate — avoiding unnecessary parameter perturbation on already-well-modelled data. On novel regimes, the low similarity triggers a higher LR for faster adaptation. This continuous modulation, combined with loss-driven early stopping, is the primary source of RG-TTA's advantage. Checkpoint reuse is a supplementary mechanism that fires on only 2.4% of batches (exclusively real-world datasets) and never on synthetic data. (See paper §4 Theorem 1 for the formal error bound, §8 for component contribution analysis.)
 
 ---
 
@@ -303,7 +303,7 @@ v1 used three fixed tiers: HIGH (sim≥0.85, K=10), MID (0.55≤sim<0.85, K=20),
 **Why it works — the core insight:** When a high-similarity match is found and passes the loss gate, loading the specialist checkpoint provides a starting point that is already calibrated for the current distribution. A few gradient steps from a good starting point beats many steps from a mediocre one. The loss gate prevents reverting to stale checkpoints on slowly-drifting data.
 
 **When RG-TTA wins:**
-- **Recurring regimes** (ETTh1/ETTh2 seasonal patterns, synth_recurring): checkpoint reuse is more accurate than blind TTA — 100% win rate on synth_recurring, 88% on ETTh2
+- **Recurring regimes** (ETTh1/ETTh2 seasonal patterns, synth_recurring): similarity-scaled LR correctly assigns conservative updates to familiar recurrences and aggressive updates to novel transitions — 100% win rate on synth_recurring, 88% on ETTh2 (where checkpoint loading also contributes on 6.9% of batches)
 - **Mixed scenarios** (some batches novel, some recurring): smooth LR scaling allocates gradient budget where needed
 - **Accuracy at lower cost**: RG-TTA is 5.5% faster than TTA (126.9s vs 134.3s) thanks to early stopping
 
@@ -658,9 +658,9 @@ The paper (§4) provides formal analysis supporting RG-TTA's design:
 
 Empirical analysis of the 6,672 batch evaluations from Run #72 reveals which components drive RG-TTA's gains:
 
-- **Checkpoint loading is rare (2.4%)**: Only 159/6,672 batches load a checkpoint. The dual gate (sim ≥ 0.75 AND loss improvement ≥ 30%) is highly selective. Loading occurs only on real-world datasets; all 8 synthetic datasets have 0% loading.
+- **Checkpoint loading is rare (2.4%)**: Only 159/6,672 batches load a checkpoint. The dual gate (sim ≥ 0.75 AND loss improvement ≥ 30%) is highly selective. Loading occurs exclusively on real-world datasets; all 8 synthetic datasets have 0% loading.
 - **When loaded, checkpoints usually help**: 66% win rate vs TTA on loaded batches (+10.7% median MSE improvement).
-- **Primary drivers are LR modulation + early stopping**: On the 97.6% of batches without checkpoint loading, RG-TTA still beats TTA 57.1% of the time. The bulk of the overall improvement comes from similarity-modulated LR (more aggressive on novel data, conservative on familiar) and loss-driven early stopping (49% of batches use full 25-step budget, 12% converge in ≤8 steps).
+- **The primary driver is not checkpoint reuse**: On the 97.6% of batches without checkpoint loading, RG-TTA still beats TTA 57.1% of the time. The bulk of the overall improvement comes from similarity-modulated LR (more aggressive on novel data, conservative on familiar) and loss-driven early stopping (49% of batches use full 25-step budget, 12% converge in ≤8 steps).
 
 ---
 
@@ -743,7 +743,7 @@ Of 14 datasets, RG-policies win the majority on **13**:
 | **60–79%** | synth_fast_switch (75%), ETTm2 (69%), ETTm1 (62%), synth_multi_regime (62%), synth_stable (62%) |
 | **<40%** | Weather (38%), synth_volatility (6%) |
 
-The 100% win rate on `synth_recurring` validates the specialist advantage (Proposition 3 in paper §8): when regimes truly recur, checkpoint reuse always outperforms generic adaptation.
+The 100% win rate on `synth_recurring` validates RG-TTA's similarity-modulated LR. Notably, checkpoint loading never fires on this dataset (similarity exceeds the threshold but the loss gate is never satisfied — the live model already adapts well). The advantage comes entirely from conservative LR on familiar recurrences + early stopping.
 
 ### 12.7 Computational Cost
 
