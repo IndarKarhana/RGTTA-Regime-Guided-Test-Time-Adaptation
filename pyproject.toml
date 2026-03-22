@@ -6,7 +6,13 @@ build-backend = "poetry.core.masonry.api"
 name = "regime-forecasting"
 version = "0.3.0"
 description = "RG-TTA: Regime-Guided Meta-Control for Test-Time Adaptation in Streaming Time Series"
-authors = ["Your Name <your.email@example.com>"]
+authors = [
+    "Indar Kumar <indarkarhana@gmail.com>",
+    "Akanksha Tiwari <akankshat2803@gmail.com>",
+    "Sai Krishna Jasti <jsaikrishna379@gmail.com>",
+    "Ankit Hemant Lade <ankitlade12@gmail.com>",
+]
+license = "MIT"
 readme = "README.md"
 packages = [{include = "regime_forecasting", from = "src"}]
 
