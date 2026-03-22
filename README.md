@@ -112,14 +112,14 @@ The 6 policies form a **controlled ablation** that isolates exactly what regime-
 |--------|------------------|-----------------|
 | **TTA** | *What happens with fixed-intensity adaptation?* | The simplest reasonable online strategy — 20 gradient steps, same intensity every time. This is the "one-size-fits-all" baseline that RG-TTA directly improves upon. |
 | **EWC** | *Does preventing forgetting help?* | EWC (Kirkpatrick et al., 2017) is the most-cited continual learning regulariser. It adds a Fisher-weighted penalty to prevent catastrophic forgetting during adaptation. |
-| **DynaTTA** | *Does dynamically adjusting the learning rate help?* | DynaTTA (Grover & Etemad, ICML 2025) uses shift metrics (z-score, embedding distances) to scale the LR via a sigmoid. It's the closest existing work to our idea — it adapts *how aggressively* to update, but reactively rather than proactively. |
+| **DynaTTA** | *Does dynamically adjusting the learning rate help?* | DynaTTA (Grover & Etemad, ICML 2025) uses shift metrics (z-score, embedding distances) to scale the LR via a sigmoid. It is the closest existing method to RG-TTA — it adapts *how aggressively* to update, but reactively rather than proactively. |
 
-#### Our Contributions (Policies 4–6): "What does regime-guidance add?"
+#### Regime-Guided Policies (Policies 4–6): "What does regime-guidance add?"
 
 | Policy | Research Question | Why Include It? |
 |--------|------------------|-----------------|
 | **RG-TTA** | *Does regime-guided adaptation beat fixed or reactive adaptation?* | Core contribution. Tests whether continuously modulating LR based on distributional similarity, combined with loss-gated checkpoint reuse and early stopping, outperforms one-size-fits-all (TTA) and reactive (DynaTTA) strategies. |
-| **RG-EWC** | *Does combining regime-guidance with EWC improve both?* | Tests whether EWC's forgetting protection benefits from regime-guided LR and checkpoint reuse. If RG-EWC beats both standalone EWC and standalone RG-TTA, the combination is synergistic. |
+| **RG-EWC** | *Does combining regime-guidance with EWC improve both?* | Tests whether EWC's forgetting protection benefits from regime-guided LR and checkpoint reuse. If RG-EWC outperforms both standalone EWC and standalone RG-TTA, the combination is synergistic. |
 | **RG-DynaTTA** | *Does combining proactive + reactive adaptation help?* | Tests whether the "best of both worlds" — proactive regime detection (RG-TTA) + reactive error-based LR (DynaTTA) — yields additional gains. Demonstrates RG-TTA as a **composable wrapper**. |
 
 #### The Ablation Logic
@@ -136,11 +136,11 @@ RG-DynaTTA                       → RG-TTA + DynaTTA sigmoid LR (proactive + re
 ```
 
 Key comparisons:
-- **RG-TTA vs TTA** → Does regime-guidance help? (core claim) → **Yes: -5.7% MSE, 67% wins**
-- **RG-EWC vs EWC** → Does regime-guided EWC beat always-on EWC? → **Yes: -14.1% MSE, 75.4% wins**
-- **RG-DynaTTA vs DynaTTA** → Does adding regime-awareness improve DynaTTA? → **Yes: -3.8% median MSE, 62.1% wins**
+- **RG-TTA vs TTA** → Does regime-guidance help? → **Yes: −5.7% MSE, 67% win rate**
+- **RG-EWC vs EWC** → Does regime-guided EWC outperform standalone EWC? → **Yes: −14.1% MSE, 75.4% win rate**
+- **RG-DynaTTA vs DynaTTA** → Does adding regime-awareness improve DynaTTA? → **Yes: −3.8% median MSE, 62.1% win rate**
 
-> **Note on calibration-only methods (TAFAS, Kim et al., AAAI 2025):** TAFAS freezes the source model and uses Gated Calibration Modules (GCMs) to adapt predictions without weight updates. It is strong at short horizons (H≤192) but collapses at longer horizons (H=336/720, +100–400% vs TTA). Since our study spans H∈{96,192,336,720}, we exclude TAFAS from the primary 6-policy comparison.
+> **Note on calibration-only methods (TAFAS, Kim et al., AAAI 2025):** TAFAS freezes the source model and uses Gated Calibration Modules (GCMs) to adapt predictions without weight updates. It performs well at short horizons (H≤192) but collapses at longer horizons (H=336/720, +100–400% vs TTA). Since the evaluation spans H∈{96,192,336,720}, TAFAS is excluded from the primary 6-policy comparison.
 
 ---
 
@@ -162,7 +162,7 @@ Fixed-step gradient adaptation on new data. Cheapest meaningful baseline.
        optimizer.step()                        // Adam, lr=3e-4
 ```
 
-**When TTA wins:** On continuously drifting data without recurrence (e.g., Weather), where fixed consistent adaptation is optimal — there's no regime to reuse, so the overhead of regime detection adds nothing. TTA wins Weather (MSE 138.99 vs RG-TTA 145.21).
+**Favourable conditions for TTA:** Continuously drifting data without recurrence (e.g., Weather), where fixed consistent adaptation is optimal and regime detection provides no benefit. TTA outperforms on Weather (MSE 138.99 vs RG-TTA 145.21).
 
 **When TTA fails:** On distribution shocks, 20 fixed steps at moderate LR may be insufficient. On recurring regimes, it wastes effort re-learning what a checkpoint already knows.
 
@@ -233,7 +233,7 @@ Grover & Etemad, 2025. Dynamic learning rate computed via sigmoid transformation
 - RG-TTA is **proactive** (matches distributions to *historical* regimes before seeing errors)
 - RG-DynaTTA combines both: proactive checkpoint reuse + reactive LR tuning
 
-**DynaTTA EMA convergence note:** DynaTTA's published EMA smoothing coefficient (η=0.1) requires ~22 gradient steps to converge — a design suited to 500-window sliding-window evaluation. Under our 10-batch streaming protocol, the EMA never fully converges, leaving the dynamic LR below TTA's fixed rate for the first 5-6 batches. Our implementation reproduces DynaTTA faithfully with published hyperparameters; this is a protocol-level mismatch.
+**DynaTTA EMA convergence note:** DynaTTA's published EMA smoothing coefficient (η=0.1) requires ~22 gradient steps to converge — a design suited to 500-window sliding-window evaluation. Under the 10-batch streaming protocol used here, the EMA never fully converges, leaving the dynamic LR below TTA's fixed rate for the first 5–6 batches. This implementation reproduces DynaTTA faithfully with published hyperparameters; the discrepancy is a protocol-level mismatch.
 
 | Parameter | Value |
 |-----------|-------|
@@ -244,9 +244,9 @@ Grover & Etemad, 2025. Dynamic learning rate computed via sigmoid transformation
 | RTAB size | 360 |
 | RDB size | 100 |
 
-### 4.4 Policy 4: RG-TTA — Regime-Guided TTA *(ours)*
+### 4.4 Policy 4: RG-TTA — Regime-Guided TTA
 
-Continuous regime-guided adaptation with similarity-scaled LR, loss-gated checkpoint reuse, and loss-driven early stopping. This is our **core contribution**.
+Continuous regime-guided adaptation with similarity-scaled LR, loss-gated checkpoint reuse, and loss-driven early stopping.
 
 **Algorithm (v2 — continuous adaptation):**
 
@@ -300,20 +300,20 @@ Continuous regime-guided adaptation with similarity-scaled LR, loss-gated checkp
 
 v1 used three fixed tiers: HIGH (sim≥0.85, K=10), MID (0.55≤sim<0.85, K=20), LOW (sim<0.55, K=30). This had two problems: (1) hard thresholds caused discontinuities — a batch at sim=0.849 got 20 steps while sim=0.851 got 10, despite near-identical distributions; (2) fixed step counts couldn't adapt to batch difficulty. v2 replaces this with continuous LR scaling and loss-driven early stopping, which naturally allocates more effort to difficult batches and less to easy ones. In practice, the step distribution is bimodal: 49% of batches use the full 25-step budget (novel regimes) while 12% converge in ≤8 steps (familiar regimes), averaging 18.5 steps per batch (median 24) vs TTA's fixed 20, saving 5.5% wall-clock time.
 
-**Why it works — the core insight:** When a high-similarity match is found and passes the loss gate, loading the specialist checkpoint provides a starting point that is already calibrated for the current distribution. A few gradient steps from a good starting point beats many steps from a mediocre one. The loss gate prevents reverting to stale checkpoints on slowly-drifting data.
+**Design rationale:** When a high-similarity match is found and passes the loss gate, loading the stored checkpoint provides a starting point already calibrated for the current distribution. A few gradient steps from a strong initialisation outperforms many steps from a suboptimal one. The loss gate prevents reverting to stale checkpoints on slowly-drifting data.
 
-**When RG-TTA wins:**
+**Favourable conditions:**
 - **Recurring regimes** (ETTh1/ETTh2 seasonal patterns, synth_recurring): similarity-scaled LR correctly assigns conservative updates to familiar recurrences and aggressive updates to novel transitions — 100% win rate on synth_recurring, 88% on ETTh2 (where checkpoint loading also contributes on 6.9% of batches)
-- **Mixed scenarios** (some batches novel, some recurring): smooth LR scaling allocates gradient budget where needed
-- **Accuracy at lower cost**: RG-TTA is 5.5% faster than TTA (126.9s vs 134.3s) thanks to early stopping
+- **Mixed scenarios** (some batches novel, some recurring): smooth LR scaling allocates gradient budget proportionally to distributional novelty
+- **Accuracy at lower cost**: RG-TTA is 5.5% faster than TTA (126.9s vs 134.3s) due to early stopping
 
-**When RG-TTA can struggle:**
-- **Continuously drifting data without recurrence** (Weather): memory never gets useful matches, RG-TTA degrades to similarity-modulated TTA with slight overhead. TTA wins Weather by 4.5%.
-- **Volatility-only shifts** (synth_volatility): checkpoint reuse doesn't help when variance changes but temporal dynamics are the same. Only 6% win rate.
-- **Short streams** (<5 batches): memory too sparse for effective matching.
-- **Random-walk data** (Exchange): near-zero regime recurrence, all policies perform identically (~0.01 MSE).
+**Limitations:**
+- **Continuously drifting data without recurrence** (Weather): memory never accumulates useful matches; RG-TTA reduces to similarity-modulated TTA with slight overhead. TTA outperforms by 4.5%.
+- **Volatility-only shifts** (synth_volatility): when variance changes but temporal dynamics remain constant, regime detection provides limited benefit. 6% win rate.
+- **Short streams** (<5 batches): insufficient memory for effective distributional matching.
+- **Random-walk data** (Exchange): near-zero regime recurrence; all policies perform identically (~0.01 MSE).
 
-### 4.5 Policy 5: RG-EWC — Regime-Guided EWC *(ours)*
+### 4.5 Policy 5: RG-EWC — Regime-Guided EWC
 
 RG-TTA with EWC regularisation (λ=400). The adaptation loop adds a Fisher-weighted penalty term.
 
@@ -338,9 +338,9 @@ RG-TTA with EWC regularisation (λ=400). The adaptation loop adds a Fisher-weigh
 - **Flat λ=400** (not tier-modulated): v1 used tier-modulated EWC scales (HIGH=0.5, MID=1.0, LOW=1.5). v2 uses a flat λ=400 because the continuous LR scaling already modulates adaptation intensity — adding tier-dependent EWC scales introduced unnecessary complexity without measurable benefit.
 - **Anchor reset on checkpoint load**: When a checkpoint is loaded, the EWC anchor θ* is reset to the loaded parameters. Without this, EWC would penalise movement away from the *pre-load* state, which defeats the purpose of checkpoint reuse.
 
-**Result:** RG-EWC is the **strongest single policy**, winning 68/224 experiments (30.4%). It reduces MSE by 14.1% vs standalone EWC with a 75.4% win rate in head-to-head comparisons (169/224).
+RG-EWC achieves the highest individual win count: 68/224 experiments (30.4%), reducing MSE by 14.1% vs standalone EWC with a 75.4% head-to-head win rate (169/224).
 
-### 4.6 Policy 6: RG-DynaTTA — Two-Level Controller *(ours)*
+### 4.6 Policy 6: RG-DynaTTA — Two-Level Controller
 
 Combines **proactive** regime detection (RG-TTA's checkpoint reuse + early stopping) with **reactive** shift-magnitude sensing (DynaTTA's sigmoid LR). Instead of the similarity-based smooth LR, DynaTTA's formula computes the learning rate based on prediction-error z-score and embedding distances.
 
@@ -351,9 +351,9 @@ Combines **proactive** regime detection (RG-TTA's checkpoint reuse + early stopp
 | **Strategic** | RG-TTA | Checkpoint reuse, early stopping | Historical regime similarity (proactive) |
 | **Tactical** | DynaTTA | Learning rate α_t | Current prediction error + embedding drift (reactive) |
 
-**When RG-DynaTTA wins:** On heterogeneous streams with varying shift magnitudes. DynaTTA's sigmoid responds to *how different* the shift is, while RG-TTA's checkpoints handle recurrence.
+**Favourable conditions:** Heterogeneous streams with varying shift magnitudes, where DynaTTA's sigmoid responds to shift intensity while RG-TTA's memory handles recurrence.
 
-**Result:** RG-DynaTTA wins 23/224 experiments (10.3%). It has +0.5% average MSE vs DynaTTA (skewed by synthetic outliers) but -3.8% *median* MSE, with 62.1% head-to-head win rate.
+RG-DynaTTA achieves 23/224 experiment wins (10.3%), with +0.5% average MSE vs DynaTTA (skewed by synthetic outliers) but −3.8% *median* MSE and 62.1% head-to-head win rate.
 
 ---
 
@@ -652,7 +652,7 @@ The paper (§4) provides formal analysis supporting RG-TTA's design:
 | **Proposition 1** (Metric properties) | The 4-method ensemble is symmetric, bounded ∈ [0,1], and KS/Wasserstein components are consistent estimators. | Ensures similarity scores are well-behaved and improve with more data. |
 | **Proposition 2** (Checkpoint loading condition) | Loading is beneficial when `sim ≥ τ` AND checkpoint loss < gate × current loss. | Justifies the dual-gate design — prevents stale checkpoint reversion. |
 | **Proposition 3** (Specialist advantage) | On recurring regimes, specialist checkpoint has zero regime-mismatch bias vs generalist's inter-regime divergence penalty. | Validates 100% win rate on `synth_recurring`. |
-| **Proposition 4** (Convergence under regime reuse) | Specialist starts closer to optimum → converges in O(1) steps vs O(K) for cold-start. | Explains why loaded checkpoints + few steps beats many steps from scratch. |
+| **Proposition 4** (Convergence under regime reuse) | Specialist starts closer to optimum → converges in O(1) steps vs O(K) for cold-start. | Explains why loaded checkpoints with few steps outperform many steps from a cold start. |
 
 ### Component Contribution Analysis
 
@@ -660,7 +660,7 @@ Empirical analysis of the 6,672 batch evaluations from Run #72 reveals which com
 
 - **Checkpoint loading is rare (2.4%)**: Only 159/6,672 batches load a checkpoint. The dual gate (sim ≥ 0.75 AND loss improvement ≥ 30%) is highly selective. Loading occurs exclusively on real-world datasets; all 8 synthetic datasets have 0% loading.
 - **When loaded, checkpoints usually help**: 66% win rate vs TTA on loaded batches (+10.7% median MSE improvement).
-- **The primary driver is not checkpoint reuse**: On the 97.6% of batches without checkpoint loading, RG-TTA still beats TTA 57.1% of the time. The bulk of the overall improvement comes from similarity-modulated LR (more aggressive on novel data, conservative on familiar) and loss-driven early stopping (49% of batches use full 25-step budget, 12% converge in ≤8 steps).
+- **The primary driver is not checkpoint reuse**: On the 97.6% of batches without checkpoint loading, RG-TTA still outperforms TTA on 57.1% of evaluations. The bulk of the overall improvement comes from similarity-modulated LR (more aggressive on novel data, conservative on familiar) and loss-driven early stopping (49% of batches use the full 25-step budget, 12% converge in ≤8 steps).
 
 ---
 
@@ -678,7 +678,7 @@ Results from **672 experiments** (6 policies × 4 models × 14 datasets × 4 hor
 | **RG-TTA** | **65** | **29.0%** |
 | **RG-EWC** | **68** | **30.4%** |
 | **RG-DynaTTA** | 23 | 10.3% |
-| ***Our total*** | ***156*** | ***69.6%*** |
+| ***RG-total*** | ***156*** | ***69.6%*** |
 
 ### 12.2 Pair-wise Regime-Guidance Effect
 
@@ -690,7 +690,7 @@ Each baseline vs its RG-variant (negative = RG-variant is better):
 | EWC → RG-EWC | **-14.1%** | -10.0% | **169/224 (75.4%)** |
 | DynaTTA → RG-DynaTTA | +0.5% | -3.8% | **139/224 (62.1%)** |
 
-RG-EWC shows the strongest regime-guidance benefit. For RG-DynaTTA, the average is near zero (skewed by synthetic outliers), but median is -3.8% with 62.1% win rate — consistent benefit.
+RG-EWC shows the largest regime-guidance improvement. For RG-DynaTTA, the average is near zero (skewed by synthetic outliers), but the median is −3.8% with a 62.1% win rate, indicating consistent benefit.
 
 ### 12.3 MSE by Model Architecture
 
@@ -705,7 +705,7 @@ Average MSE across 14 datasets × 4 horizons. **Bold** = best per column.
 | **RG-EWC** | **14,047** | **18,851** | 721,305 | 18,752 |
 | **RG-DynaTTA** | 16,787 | 22,619 | 868,742 | **16,739** |
 
-RG-TTA and RG-EWC dominate on GRU-Small (-8.8% and -9.1% vs TTA) and iTransformer (-8.9% and -10.6%). On PatchTST, policies cluster tightly. On DLinear, RG-DynaTTA wins.
+RG-TTA and RG-EWC show the largest improvements on GRU-Small (−8.8% and −9.1% vs TTA) and iTransformer (−8.9% and −10.6%). On PatchTST, all policies cluster tightly. On DLinear, RG-DynaTTA achieves the lowest MSE.
 
 ### 12.4 Real-World Benchmark Results
 
@@ -720,7 +720,7 @@ Average MSE on 6 standard real-world datasets (all horizons, all models, 3 seeds
 | **RG-EWC** | **52.33** | **78.41** | 18.14 | **37.10** | 151.39 | **0.01** |
 | **RG-DynaTTA** | 79.90 | 127.21 | 25.22 | 41.79 | 175.31 | 0.01 |
 
-RG-TTA and RG-EWC achieve best or second-best on 5 of 6 datasets. The exception is **Weather** (TTA wins), where gradual 21-feature drift favours consistent fixed-step adaptation. On **Exchange** (random-walk dynamics), all policies are identical.
+RG-TTA and RG-EWC achieve the best or second-best MSE on 5 of 6 datasets. The exception is **Weather**, where TTA outperforms due to gradual 21-feature drift that favours consistent fixed-step adaptation. On **Exchange** (random-walk dynamics), all policies perform identically.
 
 ### 12.5 Dataset Category Analysis
 
