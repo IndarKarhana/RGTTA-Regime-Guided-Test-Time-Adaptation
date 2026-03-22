@@ -929,6 +929,4 @@ archive/                                    # Historical files (stale code, old 
 
 ---
 
-*Paper in preparation for arXiv submission.*
-
 *License: MIT — see [LICENSE](LICENSE) for details.*
