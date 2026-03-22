@@ -3,6 +3,8 @@
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
+**Authors:** Indar Kumar, Akanksha Tiwari, Sai Krishna Jasti, Ankit Hemant Lade
+
 ## Table of Contents
 
 1. [Overview](#overview)
@@ -110,7 +112,7 @@ The 6 policies form a **controlled ablation** that isolates exactly what regime-
 |--------|------------------|-----------------|
 | **TTA** | *What happens with fixed-intensity adaptation?* | The simplest reasonable online strategy — 20 gradient steps, same intensity every time. This is the "one-size-fits-all" baseline that RG-TTA directly improves upon. |
 | **EWC** | *Does preventing forgetting help?* | EWC (Kirkpatrick et al., 2017) is the most-cited continual learning regulariser. It adds a Fisher-weighted penalty to prevent catastrophic forgetting during adaptation. |
-| **DynaTTA** | *Does dynamically adjusting the learning rate help?* | DynaTTA (Grover & Etemad, 2025) uses shift metrics (z-score, embedding distances) to scale the LR via a sigmoid. It's the closest existing work to our idea — it adapts *how aggressively* to update, but reactively rather than proactively. |
+| **DynaTTA** | *Does dynamically adjusting the learning rate help?* | DynaTTA (Grover & Etemad, ICML 2025) uses shift metrics (z-score, embedding distances) to scale the LR via a sigmoid. It's the closest existing work to our idea — it adapts *how aggressively* to update, but reactively rather than proactively. |
 
 #### Our Contributions (Policies 4–6): "What does regime-guidance add?"
 
@@ -138,7 +140,7 @@ Key comparisons:
 - **RG-EWC vs EWC** → Does regime-guided EWC beat always-on EWC? → **Yes: -14.1% MSE, 75.4% wins**
 - **RG-DynaTTA vs DynaTTA** → Does adding regime-awareness improve DynaTTA? → **Yes: -3.8% median MSE, 62.1% wins**
 
-> **Note on calibration-only methods (TAFAS, Kim et al., AAAI 2025):** TAFAS freezes the source model and uses Gated Calibration Modules (GCMs) to adapt predictions without weight updates. It is strong at short horizons (H≤192) but collapses at longer horizons (H=336/720, +100–400% vs TTA). Since our study spans H∈{96,192,336,720}, we exclude TAFAS from the primary 6-policy comparison. Implementation files are retained in the repo for reference.
+> **Note on calibration-only methods (TAFAS, Kim et al., AAAI 2025):** TAFAS freezes the source model and uses Gated Calibration Modules (GCMs) to adapt predictions without weight updates. It is strong at short horizons (H≤192) but collapses at longer horizons (H=336/720, +100–400% vs TTA). Since our study spans H∈{96,192,336,720}, we exclude TAFAS from the primary 6-policy comparison.
 
 ---
 
@@ -791,10 +793,6 @@ RG-TTA and RG-EWC are best or tied-best at all horizons, confirming horizon inde
 
 Single feature-vector similarity (v0) produced identical similarity scores across different seeds and was not discriminative enough. KS and Wasserstein use the full empirical distribution and are complementary: KS detects shape differences (CDF supremum), Wasserstein measures overall distributional work (integral). Feature vector adds summary-statistic context. Variance ratio catches volatility shifts.
 
-### 13.3 Full Engineering Notebook
-
-See `docs/RGTTA_DESIGN_DECISIONS.md` for the complete change log with empirical evidence for every decision.
-
 ---
 
 ## 14. Reproduction
@@ -802,7 +800,8 @@ See `docs/RGTTA_DESIGN_DECISIONS.md` for the complete change log with empirical 
 ### Installation
 
 ```bash
-git clone <repo-url> && cd "Incremental_learning research"
+git clone https://github.com/IndarKarhana/RGTTA-Regime-Guided-Test-Time-Adaptation.git
+cd RGTTA-Regime-Guided-Test-Time-Adaptation
 python -m venv .venv && source .venv/bin/activate
 pip install -e .
 ```
@@ -826,7 +825,7 @@ PYTHONPATH=.:src:benchmarks:benchmarks/data_loaders \
     --results-dir benchmarks/results/unified
 ```
 
-Results are written to `benchmarks/results/unified_v2_8pol/`.
+Results are written to `benchmarks/results/`.
 
 ### Run Tests
 
@@ -866,31 +865,20 @@ benchmarks/                                 # Policy layer (update strategies)
     rgtta_forecaster.py                     # Policy 4+5: RG-TTA + RG-EWC
     rgtta_dynatta_forecaster.py             # Policy 6: RG-DynaTTA
     baseline_forecaster.py                  # Retrain-from-scratch baseline
-    tafas_forecaster.py                     # TAFAS (reference, excluded from study)
-    rgtta_tafas_forecaster.py               # RG-TAFAS (reference, excluded)
-    run_sliding_window_benchmark.py         # Sliding-window runner (reference)
     data_loaders/
         standard_benchmarks.py              # ETT/Weather/Exchange loader
         synthetic_regimes.py                # Synthetic regime generator
-    results/
-        unified_v2_8pol/                    # Run #72 definitive results (672 experiments)
-        ablation/                           # Ablation sweep results
-
-data/benchmarks/                            # Dataset CSVs (ETT, Weather, Exchange, synthetics)
 
 paper/
-    main.tex                                # arXiv paper
+    main.tex                                # Research paper
     references.bib                          # Bibliography
     generate_all_figures.py                 # Figure + stats generator
     run_ablation_sweeps.py                  # Ablation experiment runner
-    figures/                                # Generated figures
+    figures/                                # Generated figures (PDF)
 
-docs/
-    RGTTA_DESIGN_DECISIONS.md               # Engineering notebook
-    PAPER_IMPROVEMENT_PLAN.md               # Paper progress tracker
-    RUN_LOG.md                              # Benchmark run tracker
-
-archive/                                    # Historical files (stale code, old results)
+tests/
+    test_forecaster.py                      # Core forecaster tests
+    test_tta_baseline.py                    # TTA baseline tests
 ```
 
 ---
@@ -909,7 +897,7 @@ archive/                                    # Historical files (stale code, old 
 
 ### Continual Learning & Adaptation
 - Kirkpatrick et al. (2017). *Overcoming Catastrophic Forgetting in Neural Networks.* (EWC) PNAS.
-- Grover & Etemad (2025). *DynaTTA: Dynamic Test-Time Adaptation for Time Series Forecasting.* ICML Workshop.
+- Grover & Etemad (2025). *DynaTTA: Dynamic Test-Time Adaptation for Time Series Forecasting.* ICML.
 - Kim et al. (2025). *Battling the Non-stationarity in Time Series Forecasting via Test-time Adaptation.* (TAFAS) AAAI.
 - Liang et al. (2024). *A Comprehensive Survey on Test-Time Adaptation.* arXiv.
 - McCloskey & Cohen (1989). *Catastrophic Interference in Connectionist Networks.*
