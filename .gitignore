@@ -34,45 +34,61 @@ dist/
 
 # Checkpoints and large artifacts
 checkpoints/
-checkpoints/**
 *.pt
 *.pth
-benchmarks/checkpoints_*/
-benchmarks/results/*.log
+*.pkl
 
-# Test artifacts (generated during runs)
+# Test artifacts
 benchmark_test*/
 test_checkpoint_debug*/
-
-# Data (ignore large datasets by default - remove or edit if you want to track sample CSVs)
-# To include sample CSVs in the repo, remove the following line or edit as needed.
-# data/*.csv
 
 # Logs
 *.log
 .DS_Store
+
+# IDE / editor config
 .cursor/
 
-# Benchmark data (downloaded/generated — too large for git)
-data/benchmarks/*.csv
-data/benchmarks/synthetic_metadata.json
+# Data (large — downloaded/generated)
+data/
+!data/.gitkeep
 
-# Reference PDFs (copyrighted papers)
-docs/*.pdf
+# Internal docs (kept locally)
+docs/
 
-# Benchmark checkpoint dirs and results artifacts
-benchmarks/results/unified/ckpt_*
+# Archive (old examples, notebooks)
+archive/
 
-# v2 benchmark checkpoint dirs (large binary files)
-benchmarks/results/unified_v2_8pol/ckpt_*
-benchmarks/results/unified_tta_v5/ckpt_*
-benchmarks/results/unified_retrain_v5/ckpt_*
-benchmarks/results/smoke_*/ckpt_*
+# Benchmark results (kept locally, reported in paper)
+benchmarks/results/
+benchmarks/_*.py
+benchmarks/tafas_forecaster*.py
+benchmarks/rgtta_tafas_forecaster*.py
+benchmarks/run_sliding_window_benchmark.py
+benchmarks/*_backup*
 
-# Large JSON result files (use CSV instead)
-benchmarks/results/*/unified_results.json
+# Scripts (internal VM/cloud/analysis)
+scripts/
 
-*.pkl
-archive/stale/
-*_backup.md
+# Paper scratch files and PNG duplicates
+paper/*.txt
+paper/*_backup*
+paper/figures/*.png
+paper/*.pdf
+!paper/figures/*.pdf
 paper/Research_regime_framework.pdf
+
+# LaTeX build artifacts
+paper/*.aux
+paper/*.bbl
+paper/*.blg
+paper/*.out
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.synctex*
+
+# Generated / lock files
+poetry.lock
+CHANGELOG.md
+.pre-commit-config.yaml
+*_backup.md
