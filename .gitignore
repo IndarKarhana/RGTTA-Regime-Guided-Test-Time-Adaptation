@@ -90,5 +90,4 @@ paper/*.synctex*
 # Generated / lock files
 poetry.lock
 CHANGELOG.md
-.pre-commit-config.yaml
 *_backup.md

@@ -2,18 +2,21 @@
 Smoke tests for TTA baseline (same base model, different update policy).
 Ensures TTA forecaster fits, updates, and predicts without affecting core forecaster.
 """
+
 import os
 import sys
-import pytest
+
 import numpy as np
 import pandas as pd
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "benchmarks"))
 
-from regime_forecasting.models.transformer import TimeSeriesTransformer
 from baseline_forecaster import BaselineForecaster
 from tta_forecaster import TTAForecaster
+
+from regime_forecasting.models.transformer import TimeSeriesTransformer
 
 
 @pytest.fixture
@@ -51,7 +54,9 @@ def test_tta_same_base_model_as_baseline(sample_data):
     """TTA and Baseline both use TimeSeriesTransformer (same architecture)."""
     baseline = BaselineForecaster(season_length=12, forecast_horizon=6, sequence_length=24, hidden_dim=32, num_layers=1)
     baseline.fit(sample_data.head(50), epochs=2)
-    tta = TTAForecaster(season_length=12, forecast_horizon=6, sequence_length=24, hidden_dim=32, num_layers=1, tta_steps=5)
+    tta = TTAForecaster(
+        season_length=12, forecast_horizon=6, sequence_length=24, hidden_dim=32, num_layers=1, tta_steps=5
+    )
     tta.fit(sample_data.head(50), epochs=2)
     assert isinstance(baseline.model, TimeSeriesTransformer)
     assert isinstance(tta.model, TimeSeriesTransformer)

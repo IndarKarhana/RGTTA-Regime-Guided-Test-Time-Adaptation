@@ -63,8 +63,4 @@ class RegimeDetector:
         total = len(self.feature_history)
         changes = int(sum(self.regime_flags))
         change_rate = float(changes / total) if total > 0 else 0.0
-        return {
-            'total_windows': total,
-            'regime_changes': changes,
-            'change_rate': change_rate
-        }
+        return {"total_windows": total, "regime_changes": changes, "change_rate": change_rate}

@@ -23,7 +23,6 @@ Interface matches TTAForecaster / EWCForecaster / RGTTAForecaster / DynaTTAForec
 for the unified benchmark runner.
 """
 
-import copy
 import logging
 import math
 import time
@@ -36,8 +35,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
-from scipy.stats import ks_2samp
-from scipy.stats import wasserstein_distance
+from scipy.stats import ks_2samp, wasserstein_distance
 
 from regime_forecasting.models.transformer import TimeSeriesTransformer, regime_aware_loss
 from regime_forecasting.utils.data_utils import (
@@ -60,7 +58,7 @@ class _RegimeMemory:
       2. Wasserstein-1 distance (earth-mover's dist)  — w=0.3
       3. Feature vector distance (summary statistics)  — w=0.2
       4. Variance ratio (std_min / std_max)            — w=0.2
-    See docs/RGTTA_DESIGN_DECISIONS.md.
+    See paper/main.tex for design rationale.
     """
 
     def __init__(
@@ -84,11 +82,13 @@ class _RegimeMemory:
         state_dict: Dict[str, Any],
         raw_values: Optional[np.ndarray] = None,
     ) -> None:
-        self._entries.append({
-            "features": features.flatten().copy(),
-            "state_dict": {k: v.cpu().clone() for k, v in state_dict.items()},
-            "raw_values": raw_values.copy() if raw_values is not None else None,
-        })
+        self._entries.append(
+            {
+                "features": features.flatten().copy(),
+                "state_dict": {k: v.cpu().clone() for k, v in state_dict.items()},
+                "raw_values": raw_values.copy() if raw_values is not None else None,
+            }
+        )
         while len(self._entries) > self.max_entries:
             self._entries.pop(0)
 
@@ -131,8 +131,7 @@ class _RegimeMemory:
         except Exception:
             var_sim = 1.0  # fallback: assume same variance
 
-        return float(self.w_ks * ks_sim + self.w_wass * w_sim
-                     + self.w_feat * feat_sim + self.w_var * var_sim)
+        return float(self.w_ks * ks_sim + self.w_wass * w_sim + self.w_feat * feat_sim + self.w_var * var_sim)
 
     def query(
         self,
@@ -146,8 +145,10 @@ class _RegimeMemory:
         best_state = None
         for entry in self._entries:
             sim = self._compute_similarity(
-                q, entry["features"],
-                raw_values, entry.get("raw_values"),
+                q,
+                entry["features"],
+                raw_values,
+                entry.get("raw_values"),
             )
             if sim > best_sim:
                 best_sim = sim
@@ -327,16 +328,14 @@ class RGTTADynaTTAForecaster:
 
         # DynaTTA buffers
         self._mse_buffer: deque = deque(maxlen=mse_buffer_size)
-        self._metric_hist: List[deque] = [
-            deque(maxlen=metric_history_size) for _ in range(3)
-        ]
+        self._metric_hist: List[deque] = [deque(maxlen=metric_history_size) for _ in range(3)]
         self._alpha_t: float = alpha_min  # start conservative
         self._n_adapt: int = 0
         self._warmup_steps: int = 0
         self._lr_history: List[float] = []
         # RTAB / RDB for proper embedding-distance metrics
-        self._rtab: Dict[int, List] = {}   # sid -> [emb, mse, alpha]
-        self._rdb: Dict[int, List] = {}    # sid -> [emb, mse]
+        self._rtab: Dict[int, List] = {}  # sid -> [emb, mse, alpha]
+        self._rdb: Dict[int, List] = {}  # sid -> [emb, mse]
         self._rtab_size: int = 360
         self._rdb_size: int = 100
         self._sample_counter: int = 0
@@ -370,10 +369,10 @@ class RGTTADynaTTAForecaster:
             return 0
         output_layers = {
             "output_projection",  # GRU-Small, iTransformer, LargeGRU
-            "_head",              # PatchTST
-            "_linear_seasonal",   # DLinear
-            "_linear_trend",      # DLinear
-            "adapters",           # Bottleneck adapters (D3)
+            "_head",  # PatchTST
+            "_linear_seasonal",  # DLinear
+            "_linear_trend",  # DLinear
+            "adapters",  # Bottleneck adapters (D3)
         }
         trainable = 0
         for name, param in self.model.named_parameters():
@@ -406,9 +405,7 @@ class RGTTADynaTTAForecaster:
     # ------------------------------------------------------------------
     # Embedding extraction (for DynaTTA shift metrics)
     # ------------------------------------------------------------------
-    def _extract_embedding(
-        self, Xt: torch.Tensor, Xe: Optional[torch.Tensor] = None
-    ) -> torch.Tensor:
+    def _extract_embedding(self, Xt: torch.Tensor, Xe: Optional[torch.Tensor] = None) -> torch.Tensor:
         """Extract hidden-state embedding [B, embed_dim] from the model.
 
         Handles all 5 architectures: GRU, PatchTST, iTransformer, DLinear.
@@ -564,9 +561,7 @@ class RGTTADynaTTAForecaster:
         S = sum(norms)
 
         # Sigmoid mapping to [alpha_min, alpha_max] (same formula as vanilla DynaTTA)
-        lam = 1 + (alpha_max / (alpha_min + self.eps) - 1) / (
-            1 + math.exp(-self.kappa * S)
-        )
+        lam = 1 + (alpha_max / (alpha_min + self.eps) - 1) / (1 + math.exp(-self.kappa * S))
         gamma = min(1.0, self._n_adapt / (self._warmup_steps + self.eps))
         alpha_tgt = alpha_min * (1 + gamma * (lam - 1))
 
@@ -646,8 +641,9 @@ class RGTTADynaTTAForecaster:
 
         self._scaled_feature_cols = None
         if self.feature_cols:
-            self._scaled_feature_cols = [f"{c}_scaled" for c in self.feature_cols
-                                         if f"{c}_scaled" in data_scaled.columns]
+            self._scaled_feature_cols = [
+                f"{c}_scaled" for c in self.feature_cols if f"{c}_scaled" in data_scaled.columns
+            ]
             if "y_scaled" not in self._scaled_feature_cols:
                 self._scaled_feature_cols = ["y_scaled"] + self._scaled_feature_cols
 
@@ -660,8 +656,7 @@ class RGTTADynaTTAForecaster:
         )
         n_seq = len(X_target)
         if n_seq < 2:
-            return {"status": "skipped", "reason": "insufficient_sequences",
-                    "training_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "insufficient_sequences", "training_time": time.time() - start_time}
 
         actual_input_dim = X_target.shape[2] if X_target.ndim == 3 else self.input_dim
         n_exog = X_exog.shape[2] if X_exog is not None else 0
@@ -686,6 +681,7 @@ class RGTTADynaTTAForecaster:
         # Inject adapters if requested (D3 experiment)
         if self.use_adapter and self.model_key:
             from regime_forecasting.models.adapter import inject_adapters
+
             inject_adapters(self.model, self.model_key, self.adapter_bottleneck)
 
         n_train = max(1, int(n_seq * (1 - validation_split)))
@@ -777,9 +773,7 @@ class RGTTADynaTTAForecaster:
         if self.use_ewc:
             self.model.eval()
             self._fisher = self._compute_fisher(Xt, Xe, yt)
-            self._anchor_params = {
-                n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad
-            }
+            self._anchor_params = {n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad}
 
         return {
             "status": "completed",
@@ -802,8 +796,7 @@ class RGTTADynaTTAForecaster:
         6. Store updated model in regime memory.
         """
         if self.model is None:
-            return {"status": "skipped", "reason": "no_model",
-                    "rgtta_dynatta_time": 0.0}
+            return {"status": "skipped", "reason": "no_model", "rgtta_dynatta_time": 0.0}
 
         start_time = time.time()
 
@@ -823,8 +816,7 @@ class RGTTADynaTTAForecaster:
 
         min_len = self.sequence_length + self.forecast_horizon
         if len(self.accumulated_data) < min_len:
-            return {"status": "skipped", "reason": "insufficient_data",
-                    "rgtta_dynatta_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "insufficient_data", "rgtta_dynatta_time": time.time() - start_time}
 
         # --- Regime detection ---
         raw_vals = new_df["y"].dropna().values.astype(np.float64)
@@ -833,13 +825,14 @@ class RGTTADynaTTAForecaster:
         self._last_similarity = best_sim
 
         # --- Prepare sequences ---
-        window = self.accumulated_data.tail(
-            max(min_len + 10, len(new_df) + min_len)
-        ).copy()
+        window = self.accumulated_data.tail(max(min_len + 10, len(new_df) + min_len)).copy()
 
         if not self.preprocessor.is_fitted:
-            return {"status": "skipped", "reason": "preprocessor_not_fitted",
-                    "rgtta_dynatta_time": time.time() - start_time}
+            return {
+                "status": "skipped",
+                "reason": "preprocessor_not_fitted",
+                "rgtta_dynatta_time": time.time() - start_time,
+            }
 
         self.preprocessor.update_scaler_range(new_df, "y", self.exog_cols)
 
@@ -849,11 +842,10 @@ class RGTTADynaTTAForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, '_scaled_feature_cols', None),
+            feature_cols=getattr(self, "_scaled_feature_cols", None),
         )
         if len(X_target) < 1:
-            return {"status": "skipped", "reason": "no_sequences",
-                    "rgtta_dynatta_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "no_sequences", "rgtta_dynatta_time": time.time() - start_time}
 
         X_target = np.clip(X_target, -5, 5)
         y = np.clip(y, -5, 5)
@@ -880,27 +872,27 @@ class RGTTADynaTTAForecaster:
         if best_sim >= 0.75 and best_state is not None:
             try:
                 saved_state = self.model.state_dict()
-                self.model.load_state_dict(
-                    {k: v.to(self.device) for k, v in best_state.items()}
-                )
+                self.model.load_state_dict({k: v.to(self.device) for k, v in best_state.items()})
                 with torch.no_grad():
                     ckpt_pred = self.model(Xt, Xe)
                     ckpt_loss = regime_aware_loss(yt, ckpt_pred).item()
 
-                if (not math.isnan(ckpt_loss) and not math.isnan(current_loss)
-                        and ckpt_loss < current_loss * self.ckpt_gate):
+                if (
+                    not math.isnan(ckpt_loss)
+                    and not math.isnan(current_loss)
+                    and ckpt_loss < current_loss * self.ckpt_gate
+                ):
                     loaded_checkpoint = True
                     tier_label = "ckpt"
                     current_loss = ckpt_loss  # update baseline for early stopping
                     logger.info(
                         f"🔄 RGTTA+DynaTTA: checkpoint LOADED "
                         f"(ckpt={ckpt_loss:.4f} < current*{self.ckpt_gate}={current_loss:.4f}, "
-                        f"sim={best_sim:.3f})")
+                        f"sim={best_sim:.3f})"
+                    )
                     if self.use_ewc:
                         self._anchor_params = {
-                            n: p.data.clone()
-                            for n, p in self.model.named_parameters()
-                            if p.requires_grad
+                            n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad
                         }
                 else:
                     self.model.load_state_dict(saved_state)
@@ -929,8 +921,7 @@ class RGTTADynaTTAForecaster:
 
         # --- Early-stopping gradient loop ---
         optimizer = optim.Adam(
-            filter(lambda p: p.requires_grad, self.model.parameters()),
-            lr=dynamic_lr, weight_decay=1e-5, eps=1e-8
+            filter(lambda p: p.requires_grad, self.model.parameters()), lr=dynamic_lr, weight_decay=1e-5, eps=1e-8
         )
         self.model.train()
 
@@ -1001,16 +992,15 @@ class RGTTADynaTTAForecaster:
                         self._fisher[n] = 0.5 * self._fisher[n] + 0.5 * new_fisher[n]
             else:
                 self._fisher = new_fisher
-            self._anchor_params = {
-                n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad
-            }
+            self._anchor_params = {n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad}
 
         rgtta_dynatta_time = time.time() - start_time
         logger.info(
             f"{'🔄' if loaded_checkpoint else '🔧'} RGTTA+DynaTTA: "
             f"tier={tier_label}, sim={best_sim:.3f}, lr={dynamic_lr:.6f}, "
             f"steps={steps_done}/{self.max_steps}, ckpt={'yes' if loaded_checkpoint else 'no'}, "
-            f"ewc={self.use_ewc}")
+            f"ewc={self.use_ewc}"
+        )
         return {
             "status": "completed",
             "rgtta_dynatta_time": rgtta_dynatta_time,
@@ -1040,9 +1030,7 @@ class RGTTADynaTTAForecaster:
         context_df = create_lagged_features(context_df, lags=[1, self.season_length])
         for col in self.exog_cols:
             if col in context_df.columns:
-                context_df[col] = (
-                    pd.to_numeric(context_df[col], errors="coerce").fillna(0).astype(np.float64)
-                )
+                context_df[col] = pd.to_numeric(context_df[col], errors="coerce").fillna(0).astype(np.float64)
 
         if not self.preprocessor.is_fitted:
             context_df, _ = self.preprocessor.fit_transform(context_df, "y", self.exog_cols)
@@ -1055,27 +1043,24 @@ class RGTTADynaTTAForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, '_scaled_feature_cols', None),
+            feature_cols=getattr(self, "_scaled_feature_cols", None),
         )
 
         if len(X_target_seq) == 0:
             # Fallback: build manual sequence
-            vals = (
-                context_df["y_scaled"].values
-                if "y_scaled" in context_df.columns
-                else context_df["y"].values
-            )
+            vals = context_df["y_scaled"].values if "y_scaled" in context_df.columns else context_df["y"].values
             vals = np.array(vals, dtype=np.float64)
             if len(vals) == 0:
                 return pd.DataFrame({"y_pred": [0.0] * steps_ahead})
             seq = (
-                vals[-self.sequence_length:]
+                vals[-self.sequence_length :]
                 if len(vals) >= self.sequence_length
-                else np.concatenate([
-                    np.full(self.sequence_length - len(vals),
-                            float(vals[0]) if len(vals) > 0 else 0.0),
-                    vals,
-                ])
+                else np.concatenate(
+                    [
+                        np.full(self.sequence_length - len(vals), float(vals[0]) if len(vals) > 0 else 0.0),
+                        vals,
+                    ]
+                )
             )
             X_target_seq = np.array([seq.reshape(-1, 1)], dtype=np.float64)
             X_exog_seq = None
@@ -1085,11 +1070,7 @@ class RGTTADynaTTAForecaster:
             X_exog_seq = np.clip(X_exog_seq, -5, 5)
 
         Xt = torch.FloatTensor(X_target_seq[-1:]).to(self.device)
-        Xe = (
-            torch.FloatTensor(X_exog_seq[-1:]).to(self.device)
-            if X_exog_seq is not None
-            else None
-        )
+        Xe = torch.FloatTensor(X_exog_seq[-1:]).to(self.device) if X_exog_seq is not None else None
         Xt = torch.nan_to_num(Xt, nan=0.0, posinf=0.0, neginf=0.0)
 
         with torch.no_grad():
@@ -1102,7 +1083,7 @@ class RGTTADynaTTAForecaster:
 
         # Handle NaN/Inf
         if np.any(np.isnan(predictions)) or np.any(np.isinf(predictions)):
-            context_vals = context_df["y"].values[-self.sequence_length:]
+            context_vals = context_df["y"].values[-self.sequence_length :]
             fallback = float(np.nanmean(context_vals)) if len(context_vals) > 0 else 0.0
             predictions = np.where(
                 np.isnan(predictions) | np.isinf(predictions),
@@ -1128,9 +1109,7 @@ class RGTTADynaTTAForecaster:
         return {
             "total_batches": self._batch_count,
             "total_steps": self._total_steps_all_batches,
-            "avg_steps_per_batch": (
-                self._total_steps_all_batches / max(1, self._batch_count)
-            ),
+            "avg_steps_per_batch": (self._total_steps_all_batches / max(1, self._batch_count)),
             "last_similarity": self._last_similarity,
             "last_steps": self._last_steps_used,
             "last_lr": self._last_lr,

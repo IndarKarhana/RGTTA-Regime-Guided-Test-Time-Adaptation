@@ -41,3 +41,22 @@ isort = "^5.13.0"
 
 [tool.poetry.group.test.dependencies]
 pytest-mock = "^3.11.1"
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = [
+    "E402",   # module-import-not-at-top (benchmarks use sys.path manipulation)
+    "E501",   # line-too-long (handled by formatter)
+    "E731",   # lambda assignment
+    "F841",   # local variable assigned but never used (common in research code)
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["regime_forecasting"]
+
+[tool.ruff.format]
+quote-style = "double"

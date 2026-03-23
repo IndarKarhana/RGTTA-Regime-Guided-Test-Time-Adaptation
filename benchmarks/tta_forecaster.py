@@ -5,10 +5,11 @@ but on each new batch runs K gradient steps on the new/recent data only (no full
 Used as a baseline for publication: policy-only comparison (same TimeSeriesTransformer).
 No changes to src/regime_forecasting; additive baseline only.
 """
+
 import logging
-import time
 import os
 import sys
+import time
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -102,10 +103,10 @@ class TTAForecaster:
         # Top-level module names that are "output" layers across architectures
         output_layers = {
             "output_projection",  # GRU-Small, iTransformer, LargeGRU
-            "_head",              # PatchTST
-            "_linear_seasonal",   # DLinear
-            "_linear_trend",      # DLinear
-            "adapters",           # Bottleneck adapters (D3)
+            "_head",  # PatchTST
+            "_linear_seasonal",  # DLinear
+            "_linear_trend",  # DLinear
+            "adapters",  # Bottleneck adapters (D3)
         }
         trainable = 0
         for name, param in self.model.named_parameters():
@@ -158,14 +159,14 @@ class TTAForecaster:
 
         self.accumulated_data = df.copy()
 
-        data_scaled, _ = self.preprocessor.fit_transform(df, "y", self.exog_cols,
-                                                          feature_cols=self.feature_cols)
+        data_scaled, _ = self.preprocessor.fit_transform(df, "y", self.exog_cols, feature_cols=self.feature_cols)
 
         # Build list of scaled feature column names for multivariate input
         self._scaled_feature_cols = None
         if self.feature_cols:
-            self._scaled_feature_cols = [f"{c}_scaled" for c in self.feature_cols
-                                         if f"{c}_scaled" in data_scaled.columns]
+            self._scaled_feature_cols = [
+                f"{c}_scaled" for c in self.feature_cols if f"{c}_scaled" in data_scaled.columns
+            ]
             # Always include y_scaled as first channel
             if "y_scaled" not in self._scaled_feature_cols:
                 self._scaled_feature_cols = ["y_scaled"] + self._scaled_feature_cols
@@ -209,6 +210,7 @@ class TTAForecaster:
         # Inject adapters if requested (D3 experiment)
         if self.use_adapter and self.model_key:
             from regime_forecasting.models.adapter import inject_adapters
+
             inject_adapters(self.model, self.model_key, self.adapter_bottleneck)
 
         n_train = max(1, int(n_sequences * (1 - validation_split)))
@@ -222,9 +224,7 @@ class TTAForecaster:
 
         X_target_tensor = torch.FloatTensor(X_target).to(self.device)
         y_tensor = torch.FloatTensor(y).to(self.device)
-        X_exog_tensor = (
-            torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
-        )
+        X_exog_tensor = torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
         X_target_tensor = torch.nan_to_num(X_target_tensor, nan=0.0, posinf=0.0, neginf=0.0)
         y_tensor = torch.nan_to_num(y_tensor, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -272,9 +272,7 @@ class TTAForecaster:
                 model_has_nan = any(torch.isnan(p).any() for p in self.model.parameters())
                 if val_loss < best_val_loss and not np.isnan(val_loss) and not model_has_nan:
                     best_val_loss = val_loss
-                    best_model_state = {
-                        k: v.cpu().clone() for k, v in self.model.state_dict().items()
-                    }
+                    best_model_state = {k: v.cpu().clone() for k, v in self.model.state_dict().items()}
                 self.model.train()
 
         if best_model_state is not None:
@@ -311,9 +309,12 @@ class TTAForecaster:
         new_df = new_df.sort_values("ds").reset_index(drop=True)
         new_df = create_lagged_features(new_df, lags=[1, self.season_length])
 
-        self.accumulated_data = pd.concat(
-            [self.accumulated_data, new_df], ignore_index=True
-        ).drop_duplicates(subset=["ds"]).sort_values("ds").reset_index(drop=True)
+        self.accumulated_data = (
+            pd.concat([self.accumulated_data, new_df], ignore_index=True)
+            .drop_duplicates(subset=["ds"])
+            .sort_values("ds")
+            .reset_index(drop=True)
+        )
 
         # Use most recent window that includes new data (min one sequence)
         min_len = self.sequence_length + self.forecast_horizon
@@ -321,9 +322,7 @@ class TTAForecaster:
             tta_time = time.time() - start_time
             return {"status": "skipped", "reason": "insufficient_data", "tta_time": tta_time}
 
-        window = self.accumulated_data.tail(
-            max(min_len + 10, len(new_df) + min_len)
-        ).copy()
+        window = self.accumulated_data.tail(max(min_len + 10, len(new_df) + min_len)).copy()
 
         if not self.preprocessor.is_fitted:
             tta_time = time.time() - start_time
@@ -339,7 +338,7 @@ class TTAForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, '_scaled_feature_cols', None),
+            feature_cols=getattr(self, "_scaled_feature_cols", None),
         )
 
         if len(X_target) < 1:
@@ -353,9 +352,7 @@ class TTAForecaster:
 
         X_target_tensor = torch.FloatTensor(X_target).to(self.device)
         y_tensor = torch.FloatTensor(y).to(self.device)
-        X_exog_tensor = (
-            torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
-        )
+        X_exog_tensor = torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
         X_target_tensor = torch.nan_to_num(X_target_tensor, nan=0.0, posinf=0.0, neginf=0.0)
         y_tensor = torch.nan_to_num(y_tensor, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -364,8 +361,7 @@ class TTAForecaster:
             self._freeze_backbone()
 
         optimizer = optim.Adam(
-            filter(lambda p: p.requires_grad, self.model.parameters()),
-            lr=self.tta_lr, weight_decay=1e-5, eps=1e-8
+            filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.tta_lr, weight_decay=1e-5, eps=1e-8
         )
         self.model.train()
         for _ in range(self.tta_steps):
@@ -417,32 +413,31 @@ class TTAForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, '_scaled_feature_cols', None),
+            feature_cols=getattr(self, "_scaled_feature_cols", None),
         )
 
         if len(X_target_seq) == 0:
             # Fallback: build manual sequence
-            vals = (
-                context_df["y_scaled"].values
-                if "y_scaled" in context_df.columns
-                else context_df["y"].values
-            )
+            vals = context_df["y_scaled"].values if "y_scaled" in context_df.columns else context_df["y"].values
             vals = np.array(vals, dtype=np.float64)
             if len(vals) == 0:
                 return pd.DataFrame({"y_pred": [0.0] * steps_ahead})
             if len(vals) >= self.sequence_length:
-                seq = vals[-self.sequence_length:]
+                seq = vals[-self.sequence_length :]
             else:
                 pad_val = float(vals[0]) if len(vals) > 0 else 0.0
                 pad = np.full(self.sequence_length - len(vals), pad_val, dtype=np.float64)
                 seq = np.concatenate([pad, vals])
-            input_dim = self.input_dim if hasattr(self, 'input_dim') else 1
+            input_dim = self.input_dim if hasattr(self, "input_dim") else 1
             X_target_seq = np.array([seq.reshape(-1, 1)], dtype=np.float64)
             if input_dim > 1:
-                X_target_seq = np.concatenate([
-                    X_target_seq,
-                    np.zeros((1, self.sequence_length, input_dim - 1), dtype=np.float64),
-                ], axis=-1)
+                X_target_seq = np.concatenate(
+                    [
+                        X_target_seq,
+                        np.zeros((1, self.sequence_length, input_dim - 1), dtype=np.float64),
+                    ],
+                    axis=-1,
+                )
             X_exog_seq = None
 
         X_target_seq = np.clip(X_target_seq, -5, 5)
@@ -450,11 +445,7 @@ class TTAForecaster:
             X_exog_seq = np.clip(X_exog_seq, -5, 5)
 
         Xt = torch.FloatTensor(X_target_seq[-1:]).to(self.device)
-        Xe = (
-            torch.FloatTensor(X_exog_seq[-1:]).to(self.device)
-            if X_exog_seq is not None
-            else None
-        )
+        Xe = torch.FloatTensor(X_exog_seq[-1:]).to(self.device) if X_exog_seq is not None else None
         Xt = torch.nan_to_num(Xt, nan=0.0, posinf=0.0, neginf=0.0)
 
         with torch.no_grad():
@@ -467,7 +458,7 @@ class TTAForecaster:
 
         # Handle NaN/Inf
         if np.any(np.isnan(predictions)) or np.any(np.isinf(predictions)):
-            context_vals = context_df["y"].values[-self.sequence_length:]
+            context_vals = context_df["y"].values[-self.sequence_length :]
             fallback = float(np.nanmean(context_vals)) if len(context_vals) > 0 else 0.0
             predictions = np.where(
                 np.isnan(predictions) | np.isinf(predictions),

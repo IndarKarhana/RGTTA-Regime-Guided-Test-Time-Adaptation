@@ -20,7 +20,6 @@ import argparse
 import json
 import logging
 import multiprocessing as mp
-import os
 import sys
 import time
 from datetime import datetime
@@ -39,25 +38,35 @@ sys.path.insert(0, str(_benchmark_dir.parent / "src"))
 sys.path.insert(0, str(_benchmark_dir))
 sys.path.insert(0, str(_benchmark_dir / "data_loaders"))
 
+from dynatta_forecaster import DynaTTAForecaster
+from ewc_forecaster import EWCForecaster
+from rgtta_dynatta_forecaster import RGTTADynaTTAForecaster
+from rgtta_forecaster import RGTTAForecaster
 from standard_benchmarks import StandardBenchmarkLoader
+from tta_forecaster import TTAForecaster
+
 from regime_forecasting.core.forecaster import CorrectedRegimeForecaster
 from regime_forecasting.utils.evaluation import (
-    weighted_mape, symmetric_mape, rmse as calc_rmse,
-    directional_accuracy, calculate_all_metrics,
+    directional_accuracy,
+    symmetric_mape,
+    weighted_mape,
 )
-from tta_forecaster import TTAForecaster
-from ewc_forecaster import EWCForecaster
-from rgtta_forecaster import RGTTAForecaster
-from dynatta_forecaster import DynaTTAForecaster
-from rgtta_dynatta_forecaster import RGTTADynaTTAForecaster
-from tafas_forecaster import TAFASForecaster
-from rgtta_tafas_forecaster import RGTTATAFASForecaster
+from regime_forecasting.utils.evaluation import (
+    rmse as calc_rmse,
+)
 
-from regime_forecasting.models.transformer import TimeSeriesTransformer
-from regime_forecasting.models.large_gru_model import LargeGRUForecaster
+try:
+    from rgtta_tafas_forecaster import RGTTATAFASForecaster
+    from tafas_forecaster import TAFASForecaster
+
+    _TAFAS_AVAILABLE = True
+except ImportError:
+    _TAFAS_AVAILABLE = False
+
 from regime_forecasting.models.dlinear_model import DLinearForecaster
 from regime_forecasting.models.itransformer_model import iTransformerForecaster
 from regime_forecasting.models.patchtst_model import PatchTSTForecaster
+from regime_forecasting.models.transformer import TimeSeriesTransformer
 
 logging.basicConfig(
     level=logging.INFO,
@@ -84,7 +93,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     # gru_large (~330K params) excluded from study: HIGH-tier 12-step budget
     # insufficient for 330K-param convergence, causing cascading MSE spikes.
     # RGTTA is designed for compact models where regime-guided light adaptation
-    # is meaningful. See docs/RGTTA_DESIGN_DECISIONS.md.
+    # is meaningful.
     "patchtst": {
         "class": PatchTSTForecaster,
         "kwargs": {"hidden_dim": 64, "num_layers": 2, "num_heads": 2, "patch_len": 16, "stride": 8},
@@ -104,10 +113,10 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
 # The speed advantage on HIGH tier comes from lr_high < lr_mid, not fewer steps.
 # gru_large is excluded from the study (see comment above).
 STEPS_HIGH_BY_MODEL: Dict[str, int] = {
-    "gru_small":    12,   # ~60K params  — converges in 12 steps
-    "itransformer": 16,   # ~150K params — needs slightly more
-    "patchtst":     15,   # ~120K params
-    "dlinear":      12,   # ~19K params  — very fast convergence
+    "gru_small": 12,  # ~60K params  — converges in 12 steps
+    "itransformer": 16,  # ~150K params — needs slightly more
+    "patchtst": 15,  # ~120K params
+    "dlinear": 12,  # ~19K params  — very fast convergence
 }
 
 # ---------------------------------------------------------------------------
@@ -116,15 +125,21 @@ STEPS_HIGH_BY_MODEL: Dict[str, int] = {
 DEFAULT_HORIZONS = [96, 192, 336, 720]
 DEFAULT_DATASETS = ["ETTh1", "ETTh2", "ETTm1", "ETTm2", "Weather", "Exchange"]
 SYNTHETIC_DATASETS = [
-    "synth_stable", "synth_trend_break", "synth_slow_drift", "synth_fast_switch",
-    "synth_recurring", "synth_volatility", "synth_shock_recovery", "synth_multi_regime",
+    "synth_stable",
+    "synth_trend_break",
+    "synth_slow_drift",
+    "synth_fast_switch",
+    "synth_recurring",
+    "synth_volatility",
+    "synth_shock_recovery",
+    "synth_multi_regime",
 ]
 ALL_DATASETS = DEFAULT_DATASETS + SYNTHETIC_DATASETS
 BATCH_SIZE = 750
 BASE_INITIAL_TRAIN_SIZE = 720
 MAX_BATCHES = 10
 INITIAL_EPOCHS = 15
-SEQUENCE_LENGTH = 96   # Lookback window (L=96 to match DynaTTA protocol)
+SEQUENCE_LENGTH = 96  # Lookback window (L=96 to match DynaTTA protocol)
 
 
 def get_initial_train_size(forecast_horizon: int) -> int:
@@ -137,13 +152,16 @@ def get_initial_train_size(forecast_horizon: int) -> int:
     min_needed = SEQUENCE_LENGTH + forecast_horizon + 100
     return max(BASE_INITIAL_TRAIN_SIZE, min_needed)
 
+
 # Season length per dataset — controls lag features, distribution windows,
 # and partial-checkpoint sizing.  Derived from each dataset's native frequency.
 DATASET_SEASON_LENGTH: Dict[str, int] = {
     # Hourly → 24 = one daily cycle
-    "ETTh1": 24, "ETTh2": 24,
+    "ETTh1": 24,
+    "ETTh2": 24,
     # 15-min → 96 = one daily cycle (4 × 24)
-    "ETTm1": 96, "ETTm2": 96,
+    "ETTm1": 96,
+    "ETTm2": 96,
     # 10-min → 144 = one daily cycle (6 × 24)
     "Weather": 144,
     # Hourly → 24 (321 clients)
@@ -155,16 +173,28 @@ DATASET_SEASON_LENGTH: Dict[str, int] = {
     # Weekly → 52 = one year
     "ILI": 52,
     # Synthetic (hourly) → 24
-    "synth_stable": 24, "synth_trend_break": 24, "synth_slow_drift": 24,
-    "synth_fast_switch": 24, "synth_recurring": 24, "synth_volatility": 24,
-    "synth_shock_recovery": 24, "synth_multi_regime": 24,
+    "synth_stable": 24,
+    "synth_trend_break": 24,
+    "synth_slow_drift": 24,
+    "synth_fast_switch": 24,
+    "synth_recurring": 24,
+    "synth_volatility": 24,
+    "synth_shock_recovery": 24,
+    "synth_multi_regime": 24,
 }
 
-# All 8 policies we benchmark
+# Primary 6 policies + retrain baseline (TAFAS excluded from study, added only if available)
 ALL_POLICIES = [
-    "retrain", "tta", "ewc", "dynatta", "tafas",
-    "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas",
+    "retrain",
+    "tta",
+    "ewc",
+    "dynatta",
+    "rgtta",
+    "rgtta_ewc",
+    "rgtta_dynatta",
 ]
+if _TAFAS_AVAILABLE:
+    ALL_POLICIES.extend(["tafas", "rgtta_tafas"])
 
 
 # ============================================================================
@@ -187,8 +217,13 @@ def _run_single_worker(args_tuple):
         res = bench.run_single(model_key, dataset_name, forecast_horizon, seed)
         return res
     except Exception as e:
-        return {"error": str(e), "model": model_key, "dataset": dataset_name,
-                "forecast_horizon": forecast_horizon, "seed": seed}
+        return {
+            "error": str(e),
+            "model": model_key,
+            "dataset": dataset_name,
+            "forecast_horizon": forecast_horizon,
+            "seed": seed,
+        }
 
 
 # ============================================================================
@@ -341,14 +376,6 @@ class UnifiedBenchmark:
             warmup_factor=1,
         )
 
-        # 5. TAFAS  (Kim et al., AAAI 2025 — frozen model + GCM calibration)
-        tafas = TAFASForecaster(
-            **common,
-            **model_common,
-            **mv_common,
-            model_class=model_cls,
-        )
-
         # 6. RGTTA v2 (regime-guided TTA — our core contribution)
         rgtta = RGTTAForecaster(
             **common,
@@ -403,25 +430,32 @@ class UnifiedBenchmark:
             use_ewc=False,
         )
 
-        # 9. RGTTA+TAFAS (regime-guided GCM adaptation)
-        rgtta_tafas = RGTTATAFASForecaster(
-            **common,
-            **model_common,
-            **mv_common,
-            model_class=model_cls,
-        )
-
         all_forecasters = {
             "retrain": retrain,
             "tta": tta,
             "ewc": ewc,
             "dynatta": dynatta,
-            "tafas": tafas,
             "rgtta": rgtta,
             "rgtta_ewc": rgtta_ewc,
             "rgtta_dynatta": rgtta_dynatta,
-            "rgtta_tafas": rgtta_tafas,
         }
+
+        # TAFAS excluded from primary 6-policy comparison; add only if available
+        if _TAFAS_AVAILABLE:
+            tafas = TAFASForecaster(
+                **common,
+                **model_common,
+                **mv_common,
+                model_class=model_cls,
+            )
+            rgtta_tafas = RGTTATAFASForecaster(
+                **common,
+                **model_common,
+                **mv_common,
+                model_class=model_cls,
+            )
+            all_forecasters["tafas"] = tafas
+            all_forecasters["rgtta_tafas"] = rgtta_tafas
         # Filter by selected policies
         return {k: v for k, v in all_forecasters.items() if k in self.policies}
 
@@ -479,22 +513,31 @@ class UnifiedBenchmark:
 
         # Build forecasters
         forecasters = self._build_forecasters(
-            model_key, dataset_name, forecast_horizon, seed,
-            input_dim=input_dim, feature_cols=feature_cols,
+            model_key,
+            dataset_name,
+            forecast_horizon,
+            seed,
+            input_dim=input_dim,
+            feature_cols=feature_cols,
         )
 
         # Metrics per policy — track ALL metrics for EVERY policy
         metrics = {
             policy: {
-                "mape": [], "mse": [], "mae": [], "rmse": [],
-                "smape": [], "direction_acc": [],
-                "time": [], "matches": 0,
+                "mape": [],
+                "mse": [],
+                "mae": [],
+                "rmse": [],
+                "smape": [],
+                "direction_acc": [],
+                "time": [],
+                "matches": 0,
                 # Per-batch detail (ALL policies)
-                "batch_metrics": [],      # list of dicts, one per batch
+                "batch_metrics": [],  # list of dicts, one per batch
                 # Per-batch tier tracking (RGTTA variants only)
-                "batch_tiers": [],        # tier label per batch: "high"/"mid"/"low"
-                "batch_similarities": [], # similarity score per batch
-                "batch_dynamic_lr": [],   # dynamic LR (DynaTTA variants)
+                "batch_tiers": [],  # tier label per batch: "high"/"mid"/"low"
+                "batch_similarities": [],  # similarity score per batch
+                "batch_dynamic_lr": [],  # dynamic LR (DynaTTA variants)
             }
             for policy in forecasters
         }
@@ -505,9 +548,15 @@ class UnifiedBenchmark:
         _regime_policies = {"retrain"}
         # Policies that use the standard fit() / update_with_new_data() interface
         _tta_style_policies = {
-            "tta", "ewc", "rgtta", "rgtta_ewc", "dynatta", "tafas",
-            "rgtta_dynatta", "rgtta_tafas",
+            "tta",
+            "ewc",
+            "rgtta",
+            "rgtta_ewc",
+            "dynatta",
+            "rgtta_dynatta",
         }
+        if _TAFAS_AVAILABLE:
+            _tta_style_policies.update({"tafas", "rgtta_tafas"})
 
         # --- Initial fit ---------------------------------------------------
         for policy, fc in forecasters.items():
@@ -593,7 +642,10 @@ class UnifiedBenchmark:
                                 "per_step_mae": per_step_mae,
                             }
                             # Add tier info for RGTTA variants
-                            if policy in ("rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas") and metrics[policy]["batch_tiers"]:
+                            if (
+                                policy in ("rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas")
+                                and metrics[policy]["batch_tiers"]
+                            ):
                                 batch_detail["tier"] = metrics[policy]["batch_tiers"][-1]
                                 batch_detail["similarity"] = metrics[policy]["batch_similarities"][-1]
                             # Add v2 step/lr diagnostics for RGTTA variants
@@ -651,7 +703,7 @@ class UnifiedBenchmark:
                 "rmse_std": sd_rmse,
                 "mape_mean": mu_mape,
                 "mape_std": sd_mape,
-                "wmape_mean": mu_mape,   # explicit alias (weighted_mape)
+                "wmape_mean": mu_mape,  # explicit alias (weighted_mape)
                 "wmape_std": sd_mape,
                 "smape_mean": mu_smape,
                 "smape_std": sd_smape,
@@ -676,8 +728,8 @@ class UnifiedBenchmark:
                     pol_result["per_step_mse_mean"] = step_mse_arr.mean(axis=0).tolist()
                     pol_result["per_step_mae_mean"] = step_mae_arr.mean(axis=0).tolist()
                     # Quartile summaries (step 1, H/4, H/2, 3H/4, H)
-                    quartile_idx = [0, max(0, H//4-1), max(0, H//2-1), max(0, 3*H//4-1), H-1]
-                    quartile_labels = ["step_1", f"step_{H//4}", f"step_{H//2}", f"step_{3*H//4}", f"step_{H}"]
+                    quartile_idx = [0, max(0, H // 4 - 1), max(0, H // 2 - 1), max(0, 3 * H // 4 - 1), H - 1]
+                    quartile_labels = ["step_1", f"step_{H // 4}", f"step_{H // 2}", f"step_{3 * H // 4}", f"step_{H}"]
                     pol_result["horizon_quartile_mse"] = {
                         label: float(step_mse_arr.mean(axis=0)[idx])
                         for label, idx in zip(quartile_labels, quartile_idx)
@@ -859,6 +911,7 @@ class UnifiedBenchmark:
     # -----------------------------------------------------------------------
     def _save_results(self):
         """Write results JSON (numpy-safe)."""
+
         def _convert(obj):
             if isinstance(obj, (np.floating, np.float64, np.float32)):
                 return float(obj)
@@ -883,15 +936,35 @@ class UnifiedBenchmark:
             return
 
         ALL_POLICIES = [
-            "retrain", "tta", "ewc", "dynatta", "tafas",
-            "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas",
+            "retrain",
+            "tta",
+            "ewc",
+            "dynatta",
+            "rgtta",
+            "rgtta_ewc",
+            "rgtta_dynatta",
         ]
+        if _TAFAS_AVAILABLE:
+            ALL_POLICIES.extend(["tafas", "rgtta_tafas"])
         METRIC_COLS = [
-            "mse_mean", "mse_std", "mae_mean", "mae_std",
-            "rmse_mean", "rmse_std", "mape_mean", "mape_std",
-            "wmape_mean", "wmape_std",
-            "smape_mean", "smape_std", "direction_acc_mean", "direction_acc_std",
-            "total_time", "n_batches_evaluated", "matches", "match_rate",
+            "mse_mean",
+            "mse_std",
+            "mae_mean",
+            "mae_std",
+            "rmse_mean",
+            "rmse_std",
+            "mape_mean",
+            "mape_std",
+            "wmape_mean",
+            "wmape_std",
+            "smape_mean",
+            "smape_std",
+            "direction_acc_mean",
+            "direction_acc_std",
+            "total_time",
+            "n_batches_evaluated",
+            "matches",
+            "match_rate",
         ]
 
         # --- 1. Experiment-level CSV ---
@@ -981,28 +1054,41 @@ class UnifiedBenchmark:
         ]
 
         ALL_POLICIES = [
-            "retrain", "tta", "ewc", "dynatta", "tafas",
-            "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas",
+            "retrain",
+            "tta",
+            "ewc",
+            "dynatta",
+            "rgtta",
+            "rgtta_ewc",
+            "rgtta_dynatta",
         ]
+        if _TAFAS_AVAILABLE:
+            ALL_POLICIES.extend(["tafas", "rgtta_tafas"])
         POLICY_LABELS = {
-            "retrain": "Retrain", "tta": "TTA",
-            "ewc": "EWC", "dynatta": "DynaTTA", "tafas": "TAFAS",
-            "rgtta": "RGTTA", "rgtta_ewc": "RGTTA+EWC",
+            "retrain": "Retrain",
+            "tta": "TTA",
+            "ewc": "EWC",
+            "dynatta": "DynaTTA",
+            "rgtta": "RGTTA",
+            "rgtta_ewc": "RGTTA+EWC",
             "rgtta_dynatta": "RGTTA+DynaTTA",
-            "rgtta_tafas": "RGTTA+TAFAS",
         }
+        if _TAFAS_AVAILABLE:
+            POLICY_LABELS.update({"tafas": "TAFAS", "rgtta_tafas": "RGTTA+TAFAS"})
         # Only include policies present in the results
         available_policies = [p for p in ALL_POLICIES if p in df.columns]
 
         # --- Summary table per model: avg MSE + Time across policies --------
         header_cells = ["Model"] + [f"{POLICY_LABELS[p]} MSE" for p in available_policies] + ["Best"]
         time_header = ["Model"] + [f"{POLICY_LABELS[p]} Time(s)" for p in available_policies] + ["Fastest"]
-        report_lines.extend([
-            "## Summary: Average MSE by Model × Policy",
-            "",
-            "| " + " | ".join(header_cells) + " |",
-            "|" + "|".join(["---"] * len(header_cells)) + "|",
-        ])
+        report_lines.extend(
+            [
+                "## Summary: Average MSE by Model × Policy",
+                "",
+                "| " + " | ".join(header_cells) + " |",
+                "|" + "|".join(["---"] * len(header_cells)) + "|",
+            ]
+        )
 
         time_rows = []
         for mk in self.model_keys:
@@ -1038,13 +1124,15 @@ class UnifiedBenchmark:
             report_lines.append("| " + " | ".join(row) + " |")
             time_rows.append(trow)
 
-        report_lines.extend([
-            "",
-            "## Summary: Average Time (seconds) by Model × Policy",
-            "",
-            "| " + " | ".join(time_header) + " |",
-            "|" + "|".join(["---"] * len(time_header)) + "|",
-        ])
+        report_lines.extend(
+            [
+                "",
+                "## Summary: Average Time (seconds) by Model × Policy",
+                "",
+                "| " + " | ".join(time_header) + " |",
+                "|" + "|".join(["---"] * len(time_header)) + "|",
+            ]
+        )
         for trow in time_rows:
             report_lines.append("| " + " | ".join(trow) + " |")
 
@@ -1202,20 +1290,18 @@ class UnifiedBenchmark:
             report_lines.append("")
 
         # --- Regime Tier Analysis (RGTTA variants) ----------------------
-        _rgtta_policies = [
-            p for p in [
-                "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas"
-            ] if p in available_policies
-        ]
+        _rgtta_policies = [p for p in ["rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas"] if p in available_policies]
         if _rgtta_policies:
-            report_lines.extend([
-                "## Regime Tier Analysis",
-                "",
-                "Shows how often each RGTTA variant hits each tier, and the accuracy "
-                "achieved per tier. HIGH-tier batches use checkpoint reuse; LOW-tier batches "
-                "use aggressive adaptation.",
-                "",
-            ])
+            report_lines.extend(
+                [
+                    "## Regime Tier Analysis",
+                    "",
+                    "Shows how often each RGTTA variant hits each tier, and the accuracy "
+                    "achieved per tier. HIGH-tier batches use checkpoint reuse; LOW-tier batches "
+                    "use aggressive adaptation.",
+                    "",
+                ]
+            )
 
             # Aggregate tier counts and per-tier accuracy across all experiments
             for pol in _rgtta_policies:
@@ -1246,10 +1332,12 @@ class UnifiedBenchmark:
                     report_lines.append("_No tier data available._\n")
                     continue
 
-                report_lines.extend([
-                    "| Tier | Count | % of Batches | Avg MSE | Avg MAPE |",
-                    "|------|-------|-------------|---------|----------|",
-                ])
+                report_lines.extend(
+                    [
+                        "| Tier | Count | % of Batches | Avg MSE | Avg MAPE |",
+                        "|------|-------|-------------|---------|----------|",
+                    ]
+                )
                 for tier_name, count in [("HIGH", total_high), ("MID", total_mid), ("LOW", total_low)]:
                     pct = 100 * count / total_batches if total_batches > 0 else 0
                     tkey = tier_name.lower()
@@ -1291,26 +1379,46 @@ def main():
     parser = argparse.ArgumentParser(description="Unified multi-model benchmark")
     parser.add_argument("--seeds", type=int, default=3)
     parser.add_argument("--horizons", type=int, nargs="+", default=DEFAULT_HORIZONS)
-    parser.add_argument("--datasets", type=str, nargs="+", default=None,
-                        help="Dataset names. Use 'all' for ETT + synthetic, "
-                             "'synthetic' for synthetic only, or list specific names.")
-    parser.add_argument("--models", type=str, nargs="+", default=None,
-                        choices=list(MODEL_REGISTRY.keys()),
-                        help="Which models to benchmark")
-    parser.add_argument("--quick", action="store_true",
-                        help="1 seed, 1 horizon, 1 model for smoke testing")
-    parser.add_argument("--workers", type=int, default=1,
-                        help="Number of parallel workers. Use 1 for sequential (default). "
-                             "Recommended: CPU_cores // 2 (e.g., 4 for 8-core, 48 for 96-core).")
-    parser.add_argument("--policies", type=str, nargs="+", default=None,
-                        choices=ALL_POLICIES,
-                        help="Which policies to run. Default: all 8. "
-                             "E.g., --policies retrain  OR  --policies tta ewc rgtta")
-    parser.add_argument("--results-dir", type=str, default=None,
-                        help="Directory to save results. Default: benchmarks/results/unified")
-    parser.add_argument("--use-adapters", action="store_true",
-                        help="Inject bottleneck adapters into iTransformer/PatchTST models (D3 experiment). "
-                             "GRU and DLinear models are unaffected.")
+    parser.add_argument(
+        "--datasets",
+        type=str,
+        nargs="+",
+        default=None,
+        help="Dataset names. Use 'all' for ETT + synthetic, 'synthetic' for synthetic only, or list specific names.",
+    )
+    parser.add_argument(
+        "--models",
+        type=str,
+        nargs="+",
+        default=None,
+        choices=list(MODEL_REGISTRY.keys()),
+        help="Which models to benchmark",
+    )
+    parser.add_argument("--quick", action="store_true", help="1 seed, 1 horizon, 1 model for smoke testing")
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=1,
+        help="Number of parallel workers. Use 1 for sequential (default). "
+        "Recommended: CPU_cores // 2 (e.g., 4 for 8-core, 48 for 96-core).",
+    )
+    parser.add_argument(
+        "--policies",
+        type=str,
+        nargs="+",
+        default=None,
+        choices=ALL_POLICIES,
+        help="Which policies to run. Default: all 8. E.g., --policies retrain  OR  --policies tta ewc rgtta",
+    )
+    parser.add_argument(
+        "--results-dir", type=str, default=None, help="Directory to save results. Default: benchmarks/results/unified"
+    )
+    parser.add_argument(
+        "--use-adapters",
+        action="store_true",
+        help="Inject bottleneck adapters into iTransformer/PatchTST models (D3 experiment). "
+        "GRU and DLinear models are unaffected.",
+    )
     args = parser.parse_args()
 
     # Resolve dataset aliases

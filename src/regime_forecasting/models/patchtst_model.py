@@ -28,11 +28,10 @@ so all update policies work unchanged.
 Typical parameter count with hidden_dim=64, patch_len=16, 2 layers, 2 heads:
     ~120K parameters (independent of input_dim due to channel-independence)
 """
-import math
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
 
 
 class _RevIN(nn.Module):
@@ -193,7 +192,7 @@ class PatchTSTForecaster(nn.Module):
         self._n_patches = n_patches
         flatten_dim = n_patches * self.hidden_dim
         self._head = nn.Sequential(
-            nn.Flatten(start_dim=-2),        # (B*N, n_patches*D)
+            nn.Flatten(start_dim=-2),  # (B*N, n_patches*D)
             nn.Linear(flatten_dim, self.forecast_horizon),
         ).to(device)
 
@@ -267,8 +266,11 @@ class PatchTSTForecaster(nn.Module):
         expected_vars = self.n_vars
         if actual_vars < expected_vars:
             pad = torch.zeros(
-                batch_size, seq_len, expected_vars - actual_vars,
-                device=combined.device, dtype=combined.dtype,
+                batch_size,
+                seq_len,
+                expected_vars - actual_vars,
+                device=combined.device,
+                dtype=combined.dtype,
             )
             combined = torch.cat([combined, pad], dim=-1)
         elif actual_vars > expected_vars:

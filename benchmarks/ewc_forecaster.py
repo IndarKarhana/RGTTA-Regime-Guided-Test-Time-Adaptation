@@ -15,7 +15,6 @@ Interface matches TTAForecaster / BaselineForecaster so the unified
 benchmark runner can treat it identically.
 """
 
-import copy
 import logging
 import time
 from typing import Any, Dict, List, Optional
@@ -129,10 +128,10 @@ class EWCForecaster:
             return 0
         output_layers = {
             "output_projection",  # GRU-Small, iTransformer, LargeGRU
-            "_head",              # PatchTST
-            "_linear_seasonal",   # DLinear
-            "_linear_trend",      # DLinear
-            "adapters",           # Bottleneck adapters (D3)
+            "_head",  # PatchTST
+            "_linear_seasonal",  # DLinear
+            "_linear_trend",  # DLinear
+            "adapters",  # Bottleneck adapters (D3)
         }
         trainable = 0
         for name, param in self.model.named_parameters():
@@ -211,7 +210,7 @@ class EWCForecaster:
         for n, p in self.model.named_parameters():
             if n in self._fisher and n in self._anchor_params:
                 diff = p - self._anchor_params[n]
-                penalty += (self._fisher[n] * diff ** 2).sum()
+                penalty += (self._fisher[n] * diff**2).sum()
         return penalty
 
     # ------------------------------------------------------------------
@@ -240,9 +239,7 @@ class EWCForecaster:
 
         # Build scaled feature column names for multivariate input
         if self.feature_cols:
-            self._scaled_feature_cols = ["y_scaled"] + [
-                f"{c}_scaled" for c in self.feature_cols if c != "y"
-            ]
+            self._scaled_feature_cols = ["y_scaled"] + [f"{c}_scaled" for c in self.feature_cols if c != "y"]
         else:
             self._scaled_feature_cols = None
 
@@ -256,8 +253,7 @@ class EWCForecaster:
 
         n_sequences = len(X_target)
         if n_sequences < 2:
-            return {"status": "skipped", "reason": "insufficient_sequences",
-                    "training_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "insufficient_sequences", "training_time": time.time() - start_time}
 
         n_exog = X_exog.shape[2] if X_exog is not None else 0
         actual_input_dim = X_target.shape[2] if X_target.ndim == 3 else self.input_dim
@@ -282,6 +278,7 @@ class EWCForecaster:
         # Inject adapters if requested (D3 experiment)
         if self.use_adapter and self.model_key:
             from regime_forecasting.models.adapter import inject_adapters
+
             inject_adapters(self.model, self.model_key, self.adapter_bottleneck)
 
         n_train = max(1, int(n_sequences * (1 - validation_split)))
@@ -300,8 +297,7 @@ class EWCForecaster:
         yt = torch.nan_to_num(yt, nan=0.0, posinf=0.0, neginf=0.0)
 
         actual_lr = min(learning_rate, 0.0005)
-        optimizer = optim.Adam(self.model.parameters(), lr=actual_lr,
-                               weight_decay=1e-5, eps=1e-8)
+        optimizer = optim.Adam(self.model.parameters(), lr=actual_lr, weight_decay=1e-5, eps=1e-8)
         best_val_loss = float("inf")
         best_state = None
         nan_count = 0
@@ -350,11 +346,14 @@ class EWCForecaster:
         # Compute initial Fisher + anchor
         self.model.eval()
         self._fisher = self._compute_fisher(Xt, Xe, yt)
-        self._anchor_params = {n: p.data.clone() for n, p in self.model.named_parameters()
-                               if p.requires_grad}
+        self._anchor_params = {n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad}
 
-        return {"status": "completed", "training_time": time.time() - start_time,
-                "trained_from_scratch": True, "n_sequences": n_sequences}
+        return {
+            "status": "completed",
+            "training_time": time.time() - start_time,
+            "trained_from_scratch": True,
+            "n_sequences": n_sequences,
+        }
 
     # ------------------------------------------------------------------
     def update_with_new_data(self, new_df: pd.DataFrame) -> Dict[str, Any]:
@@ -372,22 +371,21 @@ class EWCForecaster:
         new_df = new_df.sort_values("ds").reset_index(drop=True)
         new_df = create_lagged_features(new_df, lags=[1, self.season_length])
 
-        self.accumulated_data = pd.concat(
-            [self.accumulated_data, new_df], ignore_index=True
-        ).drop_duplicates(subset=["ds"]).sort_values("ds").reset_index(drop=True)
+        self.accumulated_data = (
+            pd.concat([self.accumulated_data, new_df], ignore_index=True)
+            .drop_duplicates(subset=["ds"])
+            .sort_values("ds")
+            .reset_index(drop=True)
+        )
 
         min_len = self.sequence_length + self.forecast_horizon
         if len(self.accumulated_data) < min_len:
-            return {"status": "skipped", "reason": "insufficient_data",
-                    "ewc_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "insufficient_data", "ewc_time": time.time() - start_time}
 
-        window = self.accumulated_data.tail(
-            max(min_len + 10, len(new_df) + min_len)
-        ).copy()
+        window = self.accumulated_data.tail(max(min_len + 10, len(new_df) + min_len)).copy()
 
         if not self.preprocessor.is_fitted:
-            return {"status": "skipped", "reason": "preprocessor_not_fitted",
-                    "ewc_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "preprocessor_not_fitted", "ewc_time": time.time() - start_time}
 
         # Incrementally expand scaler range if new data exceeds fitted bounds
         self.preprocessor.update_scaler_range(new_df, "y", self.exog_cols)
@@ -399,11 +397,10 @@ class EWCForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, '_scaled_feature_cols', None),
+            feature_cols=getattr(self, "_scaled_feature_cols", None),
         )
         if len(X_target) < 1:
-            return {"status": "skipped", "reason": "no_sequences",
-                    "ewc_time": time.time() - start_time}
+            return {"status": "skipped", "reason": "no_sequences", "ewc_time": time.time() - start_time}
 
         X_target = np.clip(X_target, -5, 5)
         y = np.clip(y, -5, 5)
@@ -421,8 +418,7 @@ class EWCForecaster:
             self._freeze_backbone()
 
         optimizer = optim.Adam(
-            filter(lambda p: p.requires_grad, self.model.parameters()),
-            lr=self.ewc_lr, weight_decay=1e-5, eps=1e-8
+            filter(lambda p: p.requires_grad, self.model.parameters()), lr=self.ewc_lr, weight_decay=1e-5, eps=1e-8
         )
         self.model.train()
         for _ in range(self.ewc_update_steps):
@@ -451,11 +447,9 @@ class EWCForecaster:
                     self._fisher[n] = 0.5 * self._fisher[n] + 0.5 * new_fisher[n]
         else:
             self._fisher = new_fisher
-        self._anchor_params = {n: p.data.clone() for n, p in self.model.named_parameters()
-                               if p.requires_grad}
+        self._anchor_params = {n: p.data.clone() for n, p in self.model.named_parameters() if p.requires_grad}
 
-        return {"status": "completed", "ewc_time": time.time() - start_time,
-                "n_sequences": len(X_target)}
+        return {"status": "completed", "ewc_time": time.time() - start_time, "n_sequences": len(X_target)}
 
     # ------------------------------------------------------------------
     def predict(self, context_df: pd.DataFrame, steps_ahead: int) -> pd.DataFrame:
@@ -471,9 +465,7 @@ class EWCForecaster:
         context_df = create_lagged_features(context_df, lags=[1, self.season_length])
         for col in self.exog_cols:
             if col in context_df.columns:
-                context_df[col] = (
-                    pd.to_numeric(context_df[col], errors="coerce").fillna(0).astype(np.float64)
-                )
+                context_df[col] = pd.to_numeric(context_df[col], errors="coerce").fillna(0).astype(np.float64)
 
         if not self.preprocessor.is_fitted:
             context_df, _ = self.preprocessor.fit_transform(context_df, "y", self.exog_cols)
@@ -486,23 +478,25 @@ class EWCForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, '_scaled_feature_cols', None),
+            feature_cols=getattr(self, "_scaled_feature_cols", None),
         )
 
         if len(X_target_seq) == 0:
             # Fallback: build manual sequence
-            vals = (
-                context_df["y_scaled"].values
-                if "y_scaled" in context_df.columns
-                else context_df["y"].values
-            )
+            vals = context_df["y_scaled"].values if "y_scaled" in context_df.columns else context_df["y"].values
             vals = np.array(vals, dtype=np.float64)
             if len(vals) == 0:
                 return pd.DataFrame({"y_pred": [0.0] * steps_ahead})
-            seq = vals[-self.sequence_length:] if len(vals) >= self.sequence_length else np.concatenate([
-                np.full(self.sequence_length - len(vals), float(vals[0]) if len(vals) > 0 else 0.0),
-                vals,
-            ])
+            seq = (
+                vals[-self.sequence_length :]
+                if len(vals) >= self.sequence_length
+                else np.concatenate(
+                    [
+                        np.full(self.sequence_length - len(vals), float(vals[0]) if len(vals) > 0 else 0.0),
+                        vals,
+                    ]
+                )
+            )
             X_target_seq = np.array([seq.reshape(-1, 1)], dtype=np.float64)
             X_exog_seq = None
 
@@ -524,7 +518,7 @@ class EWCForecaster:
 
         # Handle NaN/Inf
         if np.any(np.isnan(predictions)) or np.any(np.isinf(predictions)):
-            context_vals = context_df["y"].values[-self.sequence_length:]
+            context_vals = context_df["y"].values[-self.sequence_length :]
             fallback = float(np.nanmean(context_vals)) if len(context_vals) > 0 else 0.0
             predictions = np.where(
                 np.isnan(predictions) | np.isinf(predictions),
