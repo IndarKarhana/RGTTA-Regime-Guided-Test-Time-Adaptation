@@ -60,7 +60,7 @@ class _RegimeMemory:
       2. Wasserstein-1 distance (earth-mover's dist)  — w=0.3
       3. Feature vector distance (summary statistics)  — w=0.2
       4. Variance ratio (std_min / std_max)            — w=0.2
-    See docs/RGTTA_DESIGN_DECISIONS.md.
+    See paper/main.tex for design rationale.
     """
 
     def __init__(

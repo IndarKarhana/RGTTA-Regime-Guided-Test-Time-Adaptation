@@ -50,8 +50,12 @@ from ewc_forecaster import EWCForecaster
 from rgtta_forecaster import RGTTAForecaster
 from dynatta_forecaster import DynaTTAForecaster
 from rgtta_dynatta_forecaster import RGTTADynaTTAForecaster
-from tafas_forecaster import TAFASForecaster
-from rgtta_tafas_forecaster import RGTTATAFASForecaster
+try:
+    from tafas_forecaster import TAFASForecaster
+    from rgtta_tafas_forecaster import RGTTATAFASForecaster
+    _TAFAS_AVAILABLE = True
+except ImportError:
+    _TAFAS_AVAILABLE = False
 
 from regime_forecasting.models.transformer import TimeSeriesTransformer
 from regime_forecasting.models.large_gru_model import LargeGRUForecaster
@@ -84,7 +88,7 @@ MODEL_REGISTRY: Dict[str, Dict[str, Any]] = {
     # gru_large (~330K params) excluded from study: HIGH-tier 12-step budget
     # insufficient for 330K-param convergence, causing cascading MSE spikes.
     # RGTTA is designed for compact models where regime-guided light adaptation
-    # is meaningful. See docs/RGTTA_DESIGN_DECISIONS.md.
+    # is meaningful.
     "patchtst": {
         "class": PatchTSTForecaster,
         "kwargs": {"hidden_dim": 64, "num_layers": 2, "num_heads": 2, "patch_len": 16, "stride": 8},
@@ -160,11 +164,13 @@ DATASET_SEASON_LENGTH: Dict[str, int] = {
     "synth_shock_recovery": 24, "synth_multi_regime": 24,
 }
 
-# All 8 policies we benchmark
+# Primary 6 policies + retrain baseline (TAFAS excluded from study, added only if available)
 ALL_POLICIES = [
-    "retrain", "tta", "ewc", "dynatta", "tafas",
-    "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas",
+    "retrain", "tta", "ewc", "dynatta",
+    "rgtta", "rgtta_ewc", "rgtta_dynatta",
 ]
+if _TAFAS_AVAILABLE:
+    ALL_POLICIES.extend(["tafas", "rgtta_tafas"])
 
 
 # ============================================================================
@@ -341,14 +347,6 @@ class UnifiedBenchmark:
             warmup_factor=1,
         )
 
-        # 5. TAFAS  (Kim et al., AAAI 2025 — frozen model + GCM calibration)
-        tafas = TAFASForecaster(
-            **common,
-            **model_common,
-            **mv_common,
-            model_class=model_cls,
-        )
-
         # 6. RGTTA v2 (regime-guided TTA — our core contribution)
         rgtta = RGTTAForecaster(
             **common,
@@ -403,25 +401,26 @@ class UnifiedBenchmark:
             use_ewc=False,
         )
 
-        # 9. RGTTA+TAFAS (regime-guided GCM adaptation)
-        rgtta_tafas = RGTTATAFASForecaster(
-            **common,
-            **model_common,
-            **mv_common,
-            model_class=model_cls,
-        )
-
         all_forecasters = {
             "retrain": retrain,
             "tta": tta,
             "ewc": ewc,
             "dynatta": dynatta,
-            "tafas": tafas,
             "rgtta": rgtta,
             "rgtta_ewc": rgtta_ewc,
             "rgtta_dynatta": rgtta_dynatta,
-            "rgtta_tafas": rgtta_tafas,
         }
+
+        # TAFAS excluded from primary 6-policy comparison; add only if available
+        if _TAFAS_AVAILABLE:
+            tafas = TAFASForecaster(
+                **common, **model_common, **mv_common, model_class=model_cls,
+            )
+            rgtta_tafas = RGTTATAFASForecaster(
+                **common, **model_common, **mv_common, model_class=model_cls,
+            )
+            all_forecasters["tafas"] = tafas
+            all_forecasters["rgtta_tafas"] = rgtta_tafas
         # Filter by selected policies
         return {k: v for k, v in all_forecasters.items() if k in self.policies}
 
@@ -505,9 +504,11 @@ class UnifiedBenchmark:
         _regime_policies = {"retrain"}
         # Policies that use the standard fit() / update_with_new_data() interface
         _tta_style_policies = {
-            "tta", "ewc", "rgtta", "rgtta_ewc", "dynatta", "tafas",
-            "rgtta_dynatta", "rgtta_tafas",
+            "tta", "ewc", "rgtta", "rgtta_ewc", "dynatta",
+            "rgtta_dynatta",
         }
+        if _TAFAS_AVAILABLE:
+            _tta_style_policies.update({"tafas", "rgtta_tafas"})
 
         # --- Initial fit ---------------------------------------------------
         for policy, fc in forecasters.items():
@@ -883,9 +884,11 @@ class UnifiedBenchmark:
             return
 
         ALL_POLICIES = [
-            "retrain", "tta", "ewc", "dynatta", "tafas",
-            "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas",
+            "retrain", "tta", "ewc", "dynatta",
+            "rgtta", "rgtta_ewc", "rgtta_dynatta",
         ]
+        if _TAFAS_AVAILABLE:
+            ALL_POLICIES.extend(["tafas", "rgtta_tafas"])
         METRIC_COLS = [
             "mse_mean", "mse_std", "mae_mean", "mae_std",
             "rmse_mean", "rmse_std", "mape_mean", "mape_std",
@@ -981,16 +984,19 @@ class UnifiedBenchmark:
         ]
 
         ALL_POLICIES = [
-            "retrain", "tta", "ewc", "dynatta", "tafas",
-            "rgtta", "rgtta_ewc", "rgtta_dynatta", "rgtta_tafas",
+            "retrain", "tta", "ewc", "dynatta",
+            "rgtta", "rgtta_ewc", "rgtta_dynatta",
         ]
+        if _TAFAS_AVAILABLE:
+            ALL_POLICIES.extend(["tafas", "rgtta_tafas"])
         POLICY_LABELS = {
             "retrain": "Retrain", "tta": "TTA",
-            "ewc": "EWC", "dynatta": "DynaTTA", "tafas": "TAFAS",
+            "ewc": "EWC", "dynatta": "DynaTTA",
             "rgtta": "RGTTA", "rgtta_ewc": "RGTTA+EWC",
             "rgtta_dynatta": "RGTTA+DynaTTA",
-            "rgtta_tafas": "RGTTA+TAFAS",
         }
+        if _TAFAS_AVAILABLE:
+            POLICY_LABELS.update({"tafas": "TAFAS", "rgtta_tafas": "RGTTA+TAFAS"})
         # Only include policies present in the results
         available_policies = [p for p in ALL_POLICIES if p in df.columns]
 

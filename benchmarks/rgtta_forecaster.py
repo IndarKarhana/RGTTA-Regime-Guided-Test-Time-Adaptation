@@ -63,7 +63,7 @@ class _RegimeMemory:
     The variance ratio (added v2) specifically catches volatility regime
     shifts where the mean is unchanged but spread differs significantly.
 
-    Design rationale documented in docs/RGTTA_DESIGN_DECISIONS.md.
+    Design rationale documented in the paper (see paper/main.tex).
     """
 
     def __init__(
