@@ -31,19 +31,19 @@ __all__ = [
 # Backwards-compatible wrapper matching older API expected by tests
 class RegimeAwareForecaster:
     """
-Wrapper class providing backwards-compatible API.
-    
-    Core Logic:
-    1. When new data arrives, extract distribution features
-    2. Search memory for matching checkpoint
-    3. MATCH FOUND: Load checkpoint → forecast (no training)
-    4. NO MATCH (distribution change):
-       - Train new FULL model from scratch on all data
-       - Fine-tune previous FULL on last 3 seasons → save as PARTIAL
-       - Save both with distribution features
-       - Forecast using model chosen by model_selection (full/partial/adaptive)
+    Wrapper class providing backwards-compatible API.
+
+        Core Logic:
+        1. When new data arrives, extract distribution features
+        2. Search memory for matching checkpoint
+        3. MATCH FOUND: Load checkpoint → forecast (no training)
+        4. NO MATCH (distribution change):
+           - Train new FULL model from scratch on all data
+           - Fine-tune previous FULL on last 3 seasons → save as PARTIAL
+           - Save both with distribution features
+           - Forecast using model chosen by model_selection (full/partial/adaptive)
     """
-    
+
     def __init__(
         self,
         season_length: int = 12,
@@ -52,7 +52,7 @@ Wrapper class providing backwards-compatible API.
         model_config: Optional[dict] = None,
         similarity_threshold: float = 0.8,
         model_selection: str = "adaptive",  # "full", "partial", or "adaptive"
-        dynamic_threshold: bool = False,     # NEW: Enable dynamic threshold
+        dynamic_threshold: bool = False,  # NEW: Enable dynamic threshold
         verbose: bool = True,
         **kwargs,
     ):
@@ -76,9 +76,10 @@ Wrapper class providing backwards-compatible API.
             model_selection=model_selection,
             dynamic_threshold=dynamic_threshold,
         )
-        
+
         # Set logging level based on verbose flag
         import logging
+
         if not verbose:
             logging.getLogger("regime_forecasting").setLevel(logging.WARNING)
 
@@ -95,9 +96,7 @@ Wrapper class providing backwards-compatible API.
         self.model = None
         self.current_regime_id = None
 
-    def fit_incremental(
-        self, df, start_period: int = 24, epochs_per_regime: int = 20, **kwargs
-    ):
+    def fit_incremental(self, df, start_period: int = 24, epochs_per_regime: int = 20, **kwargs):
         """
         Fit on provided data.
         - First call: Initial training, creates first checkpoint
@@ -105,9 +104,7 @@ Wrapper class providing backwards-compatible API.
           - Match: Load checkpoint (no training)
           - No match: Create new full + partial checkpoints
         """
-        result = self._core.fit_incremental(
-            df, epochs_per_segment=epochs_per_regime, **kwargs
-        )
+        result = self._core.fit_incremental(df, epochs_per_segment=epochs_per_regime, **kwargs)
         self.is_fitted = True
         self.model = self._core.model
         self.current_regime_id = self._core.latest_full_checkpoint_id
@@ -143,12 +140,12 @@ Wrapper class providing backwards-compatible API.
         """
         Get history of dynamically adjusted thresholds.
         Only available when dynamic_threshold=True.
-        
+
         Returns:
             List of dicts with keys: threshold, cv, trend_strength, acf1
         """
         return self._core.threshold_history
-    
+
     def get_current_threshold(self):
         """Get the current similarity threshold (may differ from base if dynamic)."""
         return self._core.similarity_threshold

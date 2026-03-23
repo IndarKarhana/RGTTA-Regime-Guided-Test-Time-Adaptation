@@ -1,19 +1,17 @@
 """
 Distribution change detection using backward non-overlapping seasonal windows
 """
+
 import numpy as np
 import pandas as pd
-from typing import Optional
 
 
 def flag_intuitive_erratic_seasons(
-    df: pd.DataFrame, 
-    season_length: int = 12, 
-    regime_threshold: float = 0.7
+    df: pd.DataFrame, season_length: int = 12, regime_threshold: float = 0.7
 ) -> pd.DataFrame:
     """
-    Flags each observation in a time series as 'intuitively erratic' (1) or not (0) 
-    for each backward non-overlapping seasonal window. 
+    Flags each observation in a time series as 'intuitively erratic' (1) or not (0)
+    for each backward non-overlapping seasonal window.
 
     Parameters:
         df : pd.DataFrame with columns ['unique_id', 'ds', 'y']
@@ -24,9 +22,9 @@ def flag_intuitive_erratic_seasons(
         pd.DataFrame with original columns plus ['erratic_flag'] for each observation.
     """
     results = []
-    for uid, g in df.groupby('unique_id'):
-        g = g.sort_values('ds').reset_index(drop=True)
-        y = g['y'].values
+    for uid, g in df.groupby("unique_id"):
+        g = g.sort_values("ds").reset_index(drop=True)
+        y = g["y"].values
         n = len(y)
         erratic_flag = np.zeros(n, dtype=int)
 
@@ -46,7 +44,7 @@ def flag_intuitive_erratic_seasons(
                     erratic_flag[start:end] = 1
 
         # Build result DataFrame for this unique_id
-        g['erratic_flag'] = erratic_flag
+        g["erratic_flag"] = erratic_flag
         results.append(g)
 
     return pd.concat(results, ignore_index=True)

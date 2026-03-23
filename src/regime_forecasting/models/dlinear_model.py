@@ -17,9 +17,9 @@ policies work unchanged.
 Typical parameter count with seq_len=96, pred_len=96:
     2 × (96 × 96 + 96) = 18,624 parameters  (~19K)
 """
+
 import torch
 import torch.nn as nn
-import numpy as np
 
 
 class _MovingAvgBlock(nn.Module):
@@ -76,14 +76,14 @@ class DLinearForecaster(nn.Module):
     def __init__(
         self,
         input_dim: int = 1,
-        hidden_dim: int = 64,       # ignored — kept for interface compat
-        num_layers: int = 2,         # ignored
-        num_heads: int = 4,          # ignored
-        dropout: float = 0.1,        # ignored (model is linear)
+        hidden_dim: int = 64,  # ignored — kept for interface compat
+        num_layers: int = 2,  # ignored
+        num_heads: int = 4,  # ignored
+        dropout: float = 0.1,  # ignored (model is linear)
         forecast_horizon: int = 96,
         season_length: int = 12,
         exog_dim: int = 0,
-        max_seq_len: int = 512,      # ignored — for interface compat
+        max_seq_len: int = 512,  # ignored — for interface compat
     ):
         super().__init__()
         self.hidden_dim = hidden_dim  # stored for interface compat
@@ -100,7 +100,7 @@ class DLinearForecaster(nn.Module):
         # The linear layers map (seq_len,) -> (forecast_horizon,) per channel.
         self._seq_len: int = 0
         self._linear_seasonal: nn.Linear = None  # type: ignore[assignment]
-        self._linear_trend: nn.Linear = None      # type: ignore[assignment]
+        self._linear_trend: nn.Linear = None  # type: ignore[assignment]
 
         # Effective input channels (for the linear projections)
         self._channels = input_dim + exog_dim
@@ -194,7 +194,7 @@ class DLinearForecaster(nn.Module):
 
         # Sum components and average over channels -> (batch, H)
         forecast_full = seasonal_out + trend_out  # (batch, channels, H)
-        forecast = forecast_full.mean(dim=1)      # (batch, H)
+        forecast = forecast_full.mean(dim=1)  # (batch, H)
 
         forecast = torch.clamp(forecast, -5.0, 5.0)
         if torch.isnan(forecast).any():
