@@ -10,7 +10,6 @@ TTA, only adapter parameters are trainable (along with the output head).
 
 Designed for iTransformer and PatchTST architectures in the RGTTA framework.
 """
-
 import torch
 import torch.nn as nn
 
@@ -97,7 +96,6 @@ def inject_adapters_itransformer(
                 x = orig_fn(x)
                 x = adpt(x)
                 return x
-
             return patched_forward
 
         layer.forward = make_patched_forward(original_forward, adapter)
@@ -151,7 +149,6 @@ def inject_adapters_patchtst(
                 out = orig_fn(src, *args, **kwargs)
                 out = adpt(out)
                 return out
-
             return patched_forward
 
         layer.forward = make_patched_forward(original_forward, adapter)
@@ -159,7 +156,8 @@ def inject_adapters_patchtst(
     return total_params
 
 
-def inject_adapters(model: nn.Module, model_key: str, bottleneck_dim: int = 16, dropout: float = 0.1) -> int:
+def inject_adapters(model: nn.Module, model_key: str,
+                    bottleneck_dim: int = 16, dropout: float = 0.1) -> int:
     """Inject adapters into a model based on its type.
 
     Only injects into attention-based architectures (iTransformer, PatchTST).

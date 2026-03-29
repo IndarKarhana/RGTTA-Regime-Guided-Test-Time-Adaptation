@@ -7,9 +7,10 @@ Same interface as TimeSeriesTransformer. ~180K parameters.
 
 Used to test whether the update-policy findings scale with model size.
 """
-
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
 
 
 class LargeGRUForecaster(nn.Module):
@@ -24,7 +25,7 @@ class LargeGRUForecaster(nn.Module):
         input_dim: int = 1,
         hidden_dim: int = 128,
         num_layers: int = 3,
-        num_heads: int = 4,  # ignored
+        num_heads: int = 4,      # ignored
         dropout: float = 0.1,
         forecast_horizon: int = 6,
         season_length: int = 12,
@@ -118,7 +119,8 @@ class LargeGRUForecaster(nn.Module):
         actual = combined.shape[-1]
         expected = self.input_projection.in_features
         if actual < expected:
-            pad = torch.zeros(batch_size, seq_len, expected - actual, device=combined.device, dtype=combined.dtype)
+            pad = torch.zeros(batch_size, seq_len, expected - actual,
+                              device=combined.device, dtype=combined.dtype)
             combined = torch.cat([combined, pad], dim=-1)
         elif actual > expected:
             combined = combined[:, :, :expected]

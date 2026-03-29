@@ -35,6 +35,7 @@ Reference:
     Benchmarking for Time-Series Forecasting." ICML 2025 Workshop (Oral).
 """
 
+import copy
 import logging
 import math
 import time
@@ -173,7 +174,9 @@ class DynaTTAForecaster:
         # DynaTTA buffers (initialised after fit)
         self._mse_buffer: deque = deque(maxlen=mse_buffer_size)
         # metric_hist[i] for i in {0: z-score, 1: dist_rtab, 2: dist_rdb}
-        self._metric_hist: List[deque] = [deque(maxlen=metric_history_size) for _ in range(3)]
+        self._metric_hist: List[deque] = [
+            deque(maxlen=metric_history_size) for _ in range(3)
+        ]
         # RTAB: sample_id -> (embedding_tensor, mse, alpha)
         self._rtab: Dict[int, List] = {}
         # RDB:  sample_id -> (embedding_tensor, mse)
@@ -202,10 +205,10 @@ class DynaTTAForecaster:
             return 0
         output_layers = {
             "output_projection",  # GRU-Small, iTransformer, LargeGRU
-            "_head",  # PatchTST
-            "_linear_seasonal",  # DLinear
-            "_linear_trend",  # DLinear
-            "adapters",  # Bottleneck adapters (D3)
+            "_head",              # PatchTST
+            "_linear_seasonal",   # DLinear
+            "_linear_trend",      # DLinear
+            "adapters",           # Bottleneck adapters (D3)
         }
         trainable = 0
         for name, param in self.model.named_parameters():
@@ -238,7 +241,9 @@ class DynaTTAForecaster:
     # ------------------------------------------------------------------
     # Embedding extraction (adapted for our GRU model)
     # ------------------------------------------------------------------
-    def _extract_embedding(self, Xt: torch.Tensor, Xe: Optional[torch.Tensor] = None) -> torch.Tensor:
+    def _extract_embedding(
+        self, Xt: torch.Tensor, Xe: Optional[torch.Tensor] = None
+    ) -> torch.Tensor:
         """Extract hidden-state embedding from the model's encoder.
 
         Handles all 5 model architectures:
@@ -307,7 +312,9 @@ class DynaTTAForecaster:
             embs.append(entry[0])
             mses.append(entry[1])
             alps.append(entry[2])
-        inv = np.array([alp / (m + self.eps) for m, alp in zip(mses, alps)], dtype=float)
+        inv = np.array(
+            [alp / (m + self.eps) for m, alp in zip(mses, alps)], dtype=float
+        )
         w = inv / (inv.sum() + self.eps)
         stack = torch.stack(embs, 0).to(self.device)  # [N, hidden_dim]
         w_tensor = torch.from_numpy(w).float().to(self.device).unsqueeze(-1)  # [N, 1]
@@ -331,7 +338,9 @@ class DynaTTAForecaster:
         cur = self._extract_embedding(Xt, Xe).mean(0)  # [hidden_dim]
         return float(torch.norm(cur - avg, p=2).item())
 
-    def _update_rtab(self, sid: int, emb: torch.Tensor, mse: float, alpha: float = 1.0) -> None:
+    def _update_rtab(
+        self, sid: int, emb: torch.Tensor, mse: float, alpha: float = 1.0
+    ) -> None:
         """Update the Recent Table with a new entry."""
         self._rtab[sid] = [emb.detach().cpu(), mse, alpha]
         if len(self._rtab) > self._rtab_size:
@@ -365,7 +374,9 @@ class DynaTTAForecaster:
             sd = np.std(hist)
             norms.append((m - mu) / (sd + self.eps))
         S = sum(norms)
-        lam = 1 + (self.alpha_max / self.alpha_min - 1) / (1 + math.exp(-self.kappa * S))
+        lam = 1 + (self.alpha_max / self.alpha_min - 1) / (
+            1 + math.exp(-self.kappa * S)
+        )
         # Warmup
         gamma = min(1.0, self._n_adapt / (self._warmup_steps + self.eps))
         alpha_tgt = self.alpha_min * (1 + gamma * (lam - 1))
@@ -399,7 +410,9 @@ class DynaTTAForecaster:
 
         return z, dr, dp
 
-    def _update_buffers(self, Xt: torch.Tensor, Xe: Optional[torch.Tensor], yt: torch.Tensor) -> None:
+    def _update_buffers(
+        self, Xt: torch.Tensor, Xe: Optional[torch.Tensor], yt: torch.Tensor
+    ) -> None:
         """Update RTAB and RDB with current batch embeddings and errors."""
         self.model.eval()
         with torch.no_grad():
@@ -437,9 +450,8 @@ class DynaTTAForecaster:
 
         self._scaled_feature_cols = None
         if self.feature_cols:
-            self._scaled_feature_cols = [
-                f"{c}_scaled" for c in self.feature_cols if f"{c}_scaled" in data_scaled.columns
-            ]
+            self._scaled_feature_cols = [f"{c}_scaled" for c in self.feature_cols
+                                         if f"{c}_scaled" in data_scaled.columns]
             if "y_scaled" not in self._scaled_feature_cols:
                 self._scaled_feature_cols = ["y_scaled"] + self._scaled_feature_cols
 
@@ -481,7 +493,6 @@ class DynaTTAForecaster:
         # Inject adapters if requested (D3 experiment)
         if self.use_adapter and self.model_key:
             from regime_forecasting.models.adapter import inject_adapters
-
             inject_adapters(self.model, self.model_key, self.adapter_bottleneck)
 
         n_train = max(1, int(n_seq * (1 - validation_split)))
@@ -495,12 +506,18 @@ class DynaTTAForecaster:
 
         Xt = torch.FloatTensor(X_target).to(self.device)
         yt = torch.FloatTensor(y).to(self.device)
-        Xe = torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
+        Xe = (
+            torch.FloatTensor(X_exog).to(self.device)
+            if X_exog is not None
+            else None
+        )
         Xt = torch.nan_to_num(Xt, nan=0.0, posinf=0.0, neginf=0.0)
         yt = torch.nan_to_num(yt, nan=0.0, posinf=0.0, neginf=0.0)
 
         actual_lr = min(learning_rate, 0.0005)
-        optimizer = optim.Adam(self.model.parameters(), lr=actual_lr, weight_decay=1e-5, eps=1e-8)
+        optimizer = optim.Adam(
+            self.model.parameters(), lr=actual_lr, weight_decay=1e-5, eps=1e-8
+        )
         best_val_loss = float("inf")
         best_state = None
         nan_count = 0
@@ -511,7 +528,9 @@ class DynaTTAForecaster:
             for i in range(0, len(train_idx), batch_size):
                 idx = train_idx[i : i + batch_size]
                 optimizer.zero_grad()
-                pred = self.model(Xt[idx], Xe[idx] if Xe is not None else None)
+                pred = self.model(
+                    Xt[idx], Xe[idx] if Xe is not None else None
+                )
                 loss = regime_aware_loss(yt[idx], pred)
                 if torch.isnan(loss) or torch.isinf(loss):
                     nan_count += 1
@@ -525,21 +544,32 @@ class DynaTTAForecaster:
                     continue
                 nan_count = 0
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+                torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(), max_norm=1.0
+                )
                 optimizer.step()
 
             if val_idx:
                 self.model.eval()
                 with torch.no_grad():
-                    vp = self.model(Xt[val_idx], Xe[val_idx] if Xe is not None else None)
+                    vp = self.model(
+                        Xt[val_idx], Xe[val_idx] if Xe is not None else None
+                    )
                     vl = regime_aware_loss(yt[val_idx], vp).item()
-                has_nan = any(torch.isnan(p).any() for p in self.model.parameters())
+                has_nan = any(
+                    torch.isnan(p).any() for p in self.model.parameters()
+                )
                 if vl < best_val_loss and not np.isnan(vl) and not has_nan:
                     best_val_loss = vl
-                    best_state = {k: v.cpu().clone() for k, v in self.model.state_dict().items()}
+                    best_state = {
+                        k: v.cpu().clone()
+                        for k, v in self.model.state_dict().items()
+                    }
                 self.model.train()
 
-        if best_state is not None and not any(torch.isnan(v).any() for v in best_state.values()):
+        if best_state is not None and not any(
+            torch.isnan(v).any() for v in best_state.values()
+        ):
             self.model.load_state_dict(best_state)
 
         # Initialise DynaTTA state after training
@@ -565,7 +595,7 @@ class DynaTTAForecaster:
                     _e = min(_s + _seed_bs, n_train)
                     _bp = self.model(Xt[_s:_e], Xe[_s:_e] if Xe is not None else None)
                     # reduction='none' → [B, H]; mean over H → per-seq MSE [B]
-                    _bmses = F.mse_loss(_bp, yt[_s:_e], reduction="none").mean(dim=1)
+                    _bmses = F.mse_loss(_bp, yt[_s:_e], reduction='none').mean(dim=1)
                     _all_mses.extend(_bmses.tolist())
                 for _v in _all_mses:
                     self._mse_buffer.append(_v)
@@ -628,7 +658,9 @@ class DynaTTAForecaster:
             }
 
         # --- Prepare sequences ---
-        window = self.accumulated_data.tail(max(min_len + 10, len(new_df) + min_len)).copy()
+        window = self.accumulated_data.tail(
+            max(min_len + 10, len(new_df) + min_len)
+        ).copy()
 
         if not self.preprocessor.is_fitted:
             return {
@@ -646,7 +678,7 @@ class DynaTTAForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, "_scaled_feature_cols", None),
+            feature_cols=getattr(self, '_scaled_feature_cols', None),
         )
         if len(X_target) < 1:
             return {
@@ -662,7 +694,11 @@ class DynaTTAForecaster:
 
         Xt = torch.FloatTensor(X_target).to(self.device)
         yt = torch.FloatTensor(y).to(self.device)
-        Xe = torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
+        Xe = (
+            torch.FloatTensor(X_exog).to(self.device)
+            if X_exog is not None
+            else None
+        )
         Xt = torch.nan_to_num(Xt, nan=0.0, posinf=0.0, neginf=0.0)
         yt = torch.nan_to_num(yt, nan=0.0, posinf=0.0, neginf=0.0)
 
@@ -693,7 +729,9 @@ class DynaTTAForecaster:
             if torch.isnan(loss) or torch.isinf(loss):
                 continue
             loss.backward()
-            torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
+            torch.nn.utils.clip_grad_norm_(
+                self.model.parameters(), max_norm=1.0
+            )
             optimizer.step()
 
         # --- Unfreeze after adaptation ---
@@ -727,16 +765,28 @@ class DynaTTAForecaster:
         context_df = context_df.copy()
         if "unique_id" not in context_df.columns:
             context_df["unique_id"] = "ts_001"
-        context_df["y"] = pd.to_numeric(context_df["y"], errors="coerce").astype(np.float64)
-        context_df = create_lagged_features(context_df, lags=[1, self.season_length])
+        context_df["y"] = (
+            pd.to_numeric(context_df["y"], errors="coerce").astype(np.float64)
+        )
+        context_df = create_lagged_features(
+            context_df, lags=[1, self.season_length]
+        )
         for col in self.exog_cols:
             if col in context_df.columns:
-                context_df[col] = pd.to_numeric(context_df[col], errors="coerce").fillna(0).astype(np.float64)
+                context_df[col] = (
+                    pd.to_numeric(context_df[col], errors="coerce")
+                    .fillna(0)
+                    .astype(np.float64)
+                )
 
         if not self.preprocessor.is_fitted:
-            context_df, _ = self.preprocessor.fit_transform(context_df, "y", self.exog_cols)
+            context_df, _ = self.preprocessor.fit_transform(
+                context_df, "y", self.exog_cols
+            )
         else:
-            context_df = self.preprocessor.transform(context_df, "y", self.exog_cols)
+            context_df = self.preprocessor.transform(
+                context_df, "y", self.exog_cols
+            )
 
         # Build a single sequence from the most recent data
         X_target_seq, X_exog_seq, _ = prepare_sequences(
@@ -744,24 +794,27 @@ class DynaTTAForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, "_scaled_feature_cols", None),
+            feature_cols=getattr(self, '_scaled_feature_cols', None),
         )
 
         if len(X_target_seq) == 0:
             # Fallback: build manual sequence
-            vals = context_df["y_scaled"].values if "y_scaled" in context_df.columns else context_df["y"].values
+            vals = (
+                context_df["y_scaled"].values
+                if "y_scaled" in context_df.columns
+                else context_df["y"].values
+            )
             vals = np.array(vals, dtype=np.float64)
             if len(vals) == 0:
                 return pd.DataFrame({"y_pred": [0.0] * steps_ahead})
             seq = (
-                vals[-self.sequence_length :]
+                vals[-self.sequence_length:]
                 if len(vals) >= self.sequence_length
-                else np.concatenate(
-                    [
-                        np.full(self.sequence_length - len(vals), float(vals[0]) if len(vals) > 0 else 0.0),
-                        vals,
-                    ]
-                )
+                else np.concatenate([
+                    np.full(self.sequence_length - len(vals),
+                            float(vals[0]) if len(vals) > 0 else 0.0),
+                    vals,
+                ])
             )
             X_target_seq = np.array([seq.reshape(-1, 1)], dtype=np.float64)
             X_exog_seq = None
@@ -771,7 +824,11 @@ class DynaTTAForecaster:
             X_exog_seq = np.clip(X_exog_seq, -5, 5)
 
         Xt = torch.FloatTensor(X_target_seq[-1:]).to(self.device)
-        Xe = torch.FloatTensor(X_exog_seq[-1:]).to(self.device) if X_exog_seq is not None else None
+        Xe = (
+            torch.FloatTensor(X_exog_seq[-1:]).to(self.device)
+            if X_exog_seq is not None
+            else None
+        )
         Xt = torch.nan_to_num(Xt, nan=0.0, posinf=0.0, neginf=0.0)
 
         with torch.no_grad():
@@ -784,7 +841,7 @@ class DynaTTAForecaster:
 
         # Handle NaN/Inf
         if np.any(np.isnan(predictions)) or np.any(np.isinf(predictions)):
-            context_vals = context_df["y"].values[-self.sequence_length :]
+            context_vals = context_df["y"].values[-self.sequence_length:]
             fallback = float(np.nanmean(context_vals)) if len(context_vals) > 0 else 0.0
             predictions = np.where(
                 np.isnan(predictions) | np.isinf(predictions),

@@ -70,24 +70,11 @@ benchmarks/*_backup*
 # Scripts (internal VM/cloud/analysis)
 scripts/
 
-# Paper scratch files and PNG duplicates
-paper/*.txt
-paper/*_backup*
-paper/figures/*.png
-paper/*.pdf
-!paper/figures/*.pdf
-paper/Research_regime_framework.pdf
-
-# LaTeX build artifacts
-paper/*.aux
-paper/*.bbl
-paper/*.blg
-paper/*.out
-paper/*.fls
-paper/*.fdb_latexmk
-paper/*.synctex*
+# Paper (kept locally, not in repo)
+paper/
 
 # Generated / lock files
 poetry.lock
 CHANGELOG.md
+.pre-commit-config.yaml
 *_backup.md

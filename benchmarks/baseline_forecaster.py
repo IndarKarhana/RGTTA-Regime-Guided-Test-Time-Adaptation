@@ -2,11 +2,10 @@
 Baseline Forecaster: Always trains from scratch on each new data batch.
 Used as comparison against our Regime-Aware approach.
 """
-
 import logging
+import time
 import os
 import sys
-import time
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -14,7 +13,7 @@ import pandas as pd
 import torch
 import torch.optim as optim
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from regime_forecasting.models.transformer import TimeSeriesTransformer, regime_aware_loss
 from regime_forecasting.utils.data_utils import (
@@ -99,14 +98,14 @@ class BaselineForecaster:
         self.accumulated_data = df.copy()
 
         # Fit preprocessor and transform
-        data_scaled, _ = self.preprocessor.fit_transform(df, "y", self.exog_cols, feature_cols=self.feature_cols)
+        data_scaled, _ = self.preprocessor.fit_transform(df, "y", self.exog_cols,
+                                                          feature_cols=self.feature_cols)
 
         # Build list of scaled feature column names for multivariate input
         self._scaled_feature_cols = None
         if self.feature_cols:
-            self._scaled_feature_cols = [
-                f"{c}_scaled" for c in self.feature_cols if f"{c}_scaled" in data_scaled.columns
-            ]
+            self._scaled_feature_cols = [f"{c}_scaled" for c in self.feature_cols
+                                         if f"{c}_scaled" in data_scaled.columns]
             if "y_scaled" not in self._scaled_feature_cols:
                 self._scaled_feature_cols = ["y_scaled"] + self._scaled_feature_cols
 
@@ -116,7 +115,7 @@ class BaselineForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, "_scaled_feature_cols", None),
+            feature_cols=getattr(self, '_scaled_feature_cols', None),
         )
 
         n_sequences = len(X_target)
@@ -161,8 +160,10 @@ class BaselineForecaster:
 
         X_target_tensor = torch.FloatTensor(X_target).to(self.device)
         y_tensor = torch.FloatTensor(y).to(self.device)
-        X_exog_tensor = torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
-
+        X_exog_tensor = (
+            torch.FloatTensor(X_exog).to(self.device) if X_exog is not None else None
+        )
+        
         # Replace NaN/Inf in inputs
         X_target_tensor = torch.nan_to_num(X_target_tensor, nan=0.0, posinf=0.0, neginf=0.0)
         y_tensor = torch.nan_to_num(y_tensor, nan=0.0, posinf=0.0, neginf=0.0)
@@ -181,7 +182,7 @@ class BaselineForecaster:
             epoch_losses = []
 
             for i in range(0, len(train_idx), batch_size):
-                batch_idx = train_idx[i : i + batch_size]
+                batch_idx = train_idx[i: i + batch_size]
                 batch_target = X_target_tensor[batch_idx]
                 batch_y = y_tensor[batch_idx]
                 batch_exog = X_exog_tensor[batch_idx] if X_exog_tensor is not None else None
@@ -189,7 +190,7 @@ class BaselineForecaster:
                 optimizer.zero_grad()
                 predictions = self.model(batch_target, batch_exog)
                 loss = regime_aware_loss(batch_y, predictions)
-
+                
                 # Skip NaN losses
                 if torch.isnan(loss) or torch.isinf(loss):
                     nan_count += 1
@@ -202,13 +203,13 @@ class BaselineForecaster:
                                 torch.nn.init.zeros_(p)
                         nan_count = 0
                     continue
-
+                
                 nan_count = 0
                 loss.backward()
-
+                
                 # Gradient clipping
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=1.0)
-
+                
                 optimizer.step()
                 epoch_losses.append(loss.item())
 
@@ -226,7 +227,9 @@ class BaselineForecaster:
                 model_has_nan = any(torch.isnan(p).any() for p in self.model.parameters())
                 if val_loss < best_val_loss and not np.isnan(val_loss) and not model_has_nan:
                     best_val_loss = val_loss
-                    best_model_state = {k: v.cpu().clone() for k, v in self.model.state_dict().items()}
+                    best_model_state = {
+                        k: v.cpu().clone() for k, v in self.model.state_dict().items()
+                    }
                 self.model.train()
 
         # Restore best model if valid
@@ -256,12 +259,12 @@ class BaselineForecaster:
         context_df = context_df.copy()
         if "unique_id" not in context_df.columns:
             context_df["unique_id"] = "ts_001"
-
+        
         # Ensure proper data types
         context_df["y"] = pd.to_numeric(context_df["y"], errors="coerce").astype(np.float64)
 
         context_df = create_lagged_features(context_df, lags=[1, self.season_length])
-
+        
         # Ensure lag columns are numeric
         for col in self.exog_cols:
             if col in context_df.columns:
@@ -278,17 +281,21 @@ class BaselineForecaster:
             sequence_length=self.sequence_length,
             forecast_horizon=self.forecast_horizon,
             exog_cols=self.exog_cols,
-            feature_cols=getattr(self, "_scaled_feature_cols", None),
+            feature_cols=getattr(self, '_scaled_feature_cols', None),
         )
 
         if len(X_target_seq) == 0:
             # Fallback: build manual sequence
-            vals = context_df["y_scaled"].values if "y_scaled" in context_df.columns else context_df["y"].values
+            vals = (
+                context_df["y_scaled"].values
+                if "y_scaled" in context_df.columns
+                else context_df["y"].values
+            )
             vals = np.array(vals, dtype=np.float64)
             if len(vals) == 0:
                 return pd.DataFrame({"y_pred": [0.0] * steps_ahead})
             if len(vals) >= self.sequence_length:
-                seq = vals[-self.sequence_length :]
+                seq = vals[-self.sequence_length:]
             else:
                 pad_val = float(vals[0]) if len(vals) > 0 else 0.0
                 pad = np.full(self.sequence_length - len(vals), pad_val, dtype=np.float64)
@@ -301,7 +308,11 @@ class BaselineForecaster:
             X_exog_seq = np.clip(X_exog_seq, -5, 5)
 
         Xt = torch.FloatTensor(X_target_seq[-1:]).to(self.device)
-        Xe = torch.FloatTensor(X_exog_seq[-1:]).to(self.device) if X_exog_seq is not None else None
+        Xe = (
+            torch.FloatTensor(X_exog_seq[-1:]).to(self.device)
+            if X_exog_seq is not None
+            else None
+        )
         Xt = torch.nan_to_num(Xt, nan=0.0, posinf=0.0, neginf=0.0)
 
         with torch.no_grad():
@@ -314,7 +325,7 @@ class BaselineForecaster:
 
         # Handle NaN/Inf
         if np.any(np.isnan(predictions)) or np.any(np.isinf(predictions)):
-            context_vals = context_df["y"].values[-self.sequence_length :]
+            context_vals = context_df["y"].values[-self.sequence_length:]
             fallback = float(np.nanmean(context_vals)) if len(context_vals) > 0 else 0.0
             predictions = np.where(
                 np.isnan(predictions) | np.isinf(predictions),

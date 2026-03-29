@@ -26,9 +26,11 @@ update policies work unchanged.
 Typical parameter count with hidden_dim=64, 2 layers, 2 heads:
     ~150K parameters (varies with input_dim)
 """
-
+import math
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
+import numpy as np
 
 
 class _InvertedTokenEmbedding(nn.Module):
@@ -126,17 +128,15 @@ class iTransformerForecaster(nn.Module):
         self._token_embed: nn.Module = None  # type: ignore[assignment]
 
         # Encoder layers (attention across variates)
-        self.encoder_layers = nn.ModuleList(
-            [
-                _InvertedTransformerEncoderLayer(
-                    d_model=hidden_dim,
-                    n_heads=num_heads,
-                    d_ff=hidden_dim * 4,
-                    dropout=dropout,
-                )
-                for _ in range(num_layers)
-            ]
-        )
+        self.encoder_layers = nn.ModuleList([
+            _InvertedTransformerEncoderLayer(
+                d_model=hidden_dim,
+                n_heads=num_heads,
+                d_ff=hidden_dim * 4,
+                dropout=dropout,
+            )
+            for _ in range(num_layers)
+        ])
 
         # Final layer norm
         self.final_norm = nn.LayerNorm(hidden_dim, eps=1e-5)
@@ -225,11 +225,8 @@ class iTransformerForecaster(nn.Module):
         expected_vars = self.n_vars
         if actual_vars < expected_vars:
             pad = torch.zeros(
-                batch_size,
-                seq_len,
-                expected_vars - actual_vars,
-                device=combined.device,
-                dtype=combined.dtype,
+                batch_size, seq_len, expected_vars - actual_vars,
+                device=combined.device, dtype=combined.dtype,
             )
             combined = torch.cat([combined, pad], dim=-1)
         elif actual_vars > expected_vars:

@@ -27,13 +27,12 @@ All generated CSVs have columns: [date, unique_id, ds, y, regime, regime_change]
 and are saved to data/benchmarks/ alongside the ETT files.
 """
 
-import json
-import logging
-from pathlib import Path
-from typing import Dict, List, Tuple
-
 import numpy as np
 import pandas as pd
+from pathlib import Path
+from typing import List, Tuple, Dict
+import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -48,15 +47,15 @@ RNG_BASE_SEED = 2026
 # Regime specification library
 # ---------------------------------------------------------------------------
 REGIME_LIBRARY: Dict[str, dict] = {
-    "stable_growth": {"base": 500, "season_amp": 30, "noise": 12, "trend": 0.005},
-    "volatile_expansion": {"base": 900, "season_amp": 90, "noise": 45, "trend": 0.010},
-    "stagnation": {"base": 600, "season_amp": 15, "noise": 8, "trend": 0.001},
-    "decline": {"base": 800, "season_amp": 40, "noise": 20, "trend": -0.008},
-    "explosive_growth": {"base": 1500, "season_amp": 150, "noise": 60, "trend": 0.020},
-    "high_volatility": {"base": 700, "season_amp": 50, "noise": 80, "trend": 0.002},
-    "low_volatility": {"base": 700, "season_amp": 50, "noise": 5, "trend": 0.002},
-    "shock": {"base": 2000, "season_amp": 200, "noise": 100, "trend": -0.015},
-    "recovery": {"base": 1200, "season_amp": 70, "noise": 30, "trend": 0.012},
+    "stable_growth":     {"base": 500,  "season_amp": 30,  "noise": 12, "trend": 0.005},
+    "volatile_expansion":{"base": 900,  "season_amp": 90,  "noise": 45, "trend": 0.010},
+    "stagnation":        {"base": 600,  "season_amp": 15,  "noise":  8, "trend": 0.001},
+    "decline":           {"base": 800,  "season_amp": 40,  "noise": 20, "trend":-0.008},
+    "explosive_growth":  {"base":1500,  "season_amp":150,  "noise": 60, "trend": 0.020},
+    "high_volatility":   {"base": 700,  "season_amp": 50,  "noise": 80, "trend": 0.002},
+    "low_volatility":    {"base": 700,  "season_amp": 50,  "noise":  5, "trend": 0.002},
+    "shock":             {"base":2000,  "season_amp":200,  "noise":100, "trend":-0.015},
+    "recovery":          {"base":1200,  "season_amp": 70,  "noise": 30, "trend": 0.012},
 }
 
 
@@ -131,22 +130,19 @@ def _build_series_from_schedule(
     total = len(y_all)
     dates = pd.date_range("2020-01-01", periods=total, freq="h")
 
-    df = pd.DataFrame(
-        {
-            "unique_id": "synth",
-            "ds": dates,
-            "y": y_all,
-            "regime": regimes,
-            "regime_change": regime_changes,
-        }
-    )
+    df = pd.DataFrame({
+        "unique_id": "synth",
+        "ds": dates,
+        "y": y_all,
+        "regime": regimes,
+        "regime_change": regime_changes,
+    })
     return df
 
 
 # ---------------------------------------------------------------------------
 # Dataset definitions
 # ---------------------------------------------------------------------------
-
 
 def generate_synth_stable(seed: int = RNG_BASE_SEED) -> pd.DataFrame:
     """Single stable regime — control baseline (no regime changes)."""
@@ -189,15 +185,13 @@ def generate_synth_slow_drift(seed: int = RNG_BASE_SEED + 2) -> pd.DataFrame:
     for i in range(1000, TARGET_ROWS, 1000):
         regime_change[i] = True
 
-    return pd.DataFrame(
-        {
-            "unique_id": "synth",
-            "ds": dates,
-            "y": y,
-            "regime": regime_labels,
-            "regime_change": regime_change,
-        }
-    )
+    return pd.DataFrame({
+        "unique_id": "synth",
+        "ds": dates,
+        "y": y,
+        "regime": regime_labels,
+        "regime_change": regime_change,
+    })
 
 
 def generate_synth_fast_switch(seed: int = RNG_BASE_SEED + 3) -> pd.DataFrame:
@@ -271,10 +265,10 @@ def generate_synth_shock_recovery(seed: int = RNG_BASE_SEED + 6) -> pd.DataFrame
     all 4 appear within the 10-batch streaming window (rows 720-8220).
     """
     schedule = [
-        ("stable_growth", 2500),  # ~B1-B2 stable
-        ("shock", 2000),  # ~B3-B5 shock
-        ("recovery", 2000),  # ~B5-B7 recovery
-        ("stagnation", TARGET_ROWS - 6500),  # B8+ new equilibrium
+        ("stable_growth",  2500),  # ~B1-B2 stable
+        ("shock",          2000),  # ~B3-B5 shock
+        ("recovery",       2000),  # ~B5-B7 recovery
+        ("stagnation",     TARGET_ROWS - 6500),  # B8+ new equilibrium
     ]
     return _build_series_from_schedule(schedule, seed, smooth_transitions=True)
 
@@ -285,14 +279,14 @@ def generate_synth_multi_regime(seed: int = RNG_BASE_SEED + 7) -> pd.DataFrame:
     Closest to real-world complexity. Tests the full RGTTA machinery.
     """
     schedule = [
-        ("stable_growth", 2000),
-        ("volatile_expansion", 1500),
-        ("stagnation", 1500),
-        ("explosive_growth", 1500),
-        ("decline", 1500),
-        ("stable_growth", 2000),  # recurrence of first regime
-        ("shock", 1500),
-        ("recovery", TARGET_ROWS - 11500),  # fill remainder
+        ("stable_growth",      2000),
+        ("volatile_expansion",  1500),
+        ("stagnation",         1500),
+        ("explosive_growth",    1500),
+        ("decline",             1500),
+        ("stable_growth",       2000),  # recurrence of first regime
+        ("shock",               1500),
+        ("recovery",           TARGET_ROWS - 11500),  # fill remainder
     ]
     return _build_series_from_schedule(schedule, seed, smooth_transitions=True)
 
@@ -301,14 +295,14 @@ def generate_synth_multi_regime(seed: int = RNG_BASE_SEED + 7) -> pd.DataFrame:
 # Registry: name → generator function
 # ---------------------------------------------------------------------------
 SYNTHETIC_DATASETS: Dict[str, callable] = {
-    "synth_stable": generate_synth_stable,
-    "synth_trend_break": generate_synth_trend_break,
-    "synth_slow_drift": generate_synth_slow_drift,
-    "synth_fast_switch": generate_synth_fast_switch,
-    "synth_recurring": generate_synth_recurring,
-    "synth_volatility": generate_synth_volatility,
-    "synth_shock_recovery": generate_synth_shock_recovery,
-    "synth_multi_regime": generate_synth_multi_regime,
+    "synth_stable":          generate_synth_stable,
+    "synth_trend_break":     generate_synth_trend_break,
+    "synth_slow_drift":      generate_synth_slow_drift,
+    "synth_fast_switch":     generate_synth_fast_switch,
+    "synth_recurring":       generate_synth_recurring,
+    "synth_volatility":      generate_synth_volatility,
+    "synth_shock_recovery":  generate_synth_shock_recovery,
+    "synth_multi_regime":    generate_synth_multi_regime,
 }
 
 
@@ -354,10 +348,15 @@ def generate_all(
             "regimes": n_regimes,
             "regime_changes": n_changes,
             "batches_at_500": batches_possible,
-            "regime_sequence": (df.groupby((df["regime"] != df["regime"].shift()).cumsum())["regime"].first().tolist()),
+            "regime_sequence": (
+                df.groupby((df["regime"] != df["regime"].shift()).cumsum())["regime"]
+                .first()
+                .tolist()
+            ),
         }
         logger.info(
-            f"  {name}: {len(df)} rows, {n_regimes} regimes, {n_changes} changes, {batches_possible} batches@500"
+            f"  {name}: {len(df)} rows, {n_regimes} regimes, "
+            f"{n_changes} changes, {batches_possible} batches@500"
         )
 
     # Save metadata
