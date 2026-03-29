@@ -13,6 +13,9 @@ ENV/
 .vscode/
 .idea/
 
+# Copilot instructions (local only)
+.github/copilot-instructions.md
+
 # Jupyter
 .ipynb_checkpoints
 
