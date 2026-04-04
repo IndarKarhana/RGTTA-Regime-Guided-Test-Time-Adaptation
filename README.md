@@ -299,6 +299,8 @@ Continuous regime-guided adaptation with similarity-scaled LR, loss-gated checkp
 | Loss gate | < 0.70 × current | ≥30% improvement required |
 | Memory capacity | 5 (FIFO eviction) | Cap on stored checkpoints |
 
+> **Experimental ablation option (not default):** RG-TTA and RG-EWC also support a volatility-adaptive checkpoint gate (`--rgtta-gate-mode adaptive`) for sensitivity studies. The definitive benchmark and paper results keep the fixed gate at `0.70`.
+
 **Why v2 (continuous) replaced v1 (discrete tiers):**
 
 v1 used three fixed tiers: HIGH (sim≥0.85, K=10), MID (0.55≤sim<0.85, K=20), LOW (sim<0.55, K=30). This had two problems: (1) hard thresholds caused discontinuities — a batch at sim=0.849 got 20 steps while sim=0.851 got 10, despite near-identical distributions; (2) fixed step counts couldn't adapt to batch difficulty. v2 replaces this with continuous LR scaling and loss-driven early stopping, which naturally allocates more effort to difficult batches and less to easy ones. In practice, the step distribution is bimodal: 49% of batches use the full 25-step budget (novel regimes) while 12% converge in ≤8 steps (familiar regimes), averaging 18.5 steps per batch (median 24) vs TTA's fixed 20, saving 5.5% wall-clock time.

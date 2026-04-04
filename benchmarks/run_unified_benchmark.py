@@ -172,7 +172,21 @@ ALL_POLICIES = [
 # ============================================================================
 def _run_single_worker(args_tuple):
     """Worker function for multiprocessing. Must be top-level for pickle."""
-    results_dir, model_key, dataset_name, forecast_horizon, seed, model_keys, policies, use_adapter = args_tuple
+    (
+        results_dir,
+        model_key,
+        dataset_name,
+        forecast_horizon,
+        seed,
+        model_keys,
+        policies,
+        use_adapter,
+        lr_sim_scale,
+        rgtta_gate_mode,
+        rgtta_gate_min,
+        rgtta_gate_max,
+        rgtta_vol_window,
+    ) = args_tuple
     # Suppress noisy logging in workers
     logging.getLogger().setLevel(logging.WARNING)
     bench = UnifiedBenchmark(
@@ -182,6 +196,11 @@ def _run_single_worker(args_tuple):
         model_keys=model_keys,
         policies=policies,
         use_adapter=use_adapter,
+        lr_sim_scale=lr_sim_scale,
+        rgtta_gate_mode=rgtta_gate_mode,
+        rgtta_gate_min=rgtta_gate_min,
+        rgtta_gate_max=rgtta_gate_max,
+        rgtta_vol_window=rgtta_vol_window,
     )
     try:
         res = bench.run_single(model_key, dataset_name, forecast_horizon, seed)
@@ -207,6 +226,10 @@ class UnifiedBenchmark:
         policies: Optional[List[str]] = None,
         use_adapter: bool = False,
         lr_sim_scale: float = 0.67,
+        rgtta_gate_mode: str = "fixed",
+        rgtta_gate_min: float = 0.60,
+        rgtta_gate_max: float = 0.85,
+        rgtta_vol_window: int = 5,
     ):
         if results_dir is None:
             results_dir = str(_benchmark_dir / "results" / "unified")
@@ -220,6 +243,10 @@ class UnifiedBenchmark:
         self.policies = policies or ALL_POLICIES  # Filter which policies to run
         self.use_adapter = use_adapter
         self.lr_sim_scale = lr_sim_scale
+        self.rgtta_gate_mode = rgtta_gate_mode
+        self.rgtta_gate_min = rgtta_gate_min
+        self.rgtta_gate_max = rgtta_gate_max
+        self.rgtta_vol_window = rgtta_vol_window
         self.loader = StandardBenchmarkLoader()
 
         # Master results dict
@@ -235,6 +262,10 @@ class UnifiedBenchmark:
                 "sequence_length": SEQUENCE_LENGTH,
                 "use_adapter": use_adapter,
                 "lr_sim_scale": lr_sim_scale,
+                "rgtta_gate_mode": rgtta_gate_mode,
+                "rgtta_gate_min": rgtta_gate_min,
+                "rgtta_gate_max": rgtta_gate_max,
+                "rgtta_vol_window": rgtta_vol_window,
             },
             "experiments": [],  # flat list of per-run dicts
         }
@@ -365,6 +396,10 @@ class UnifiedBenchmark:
             patience=3,
             epsilon=0.005,
             ckpt_gate=0.70,
+            gate_mode=self.rgtta_gate_mode,
+            gate_min=self.rgtta_gate_min,
+            gate_max=self.rgtta_gate_max,
+            volatility_window=self.rgtta_vol_window,
             lr_sim_scale=self.lr_sim_scale,
             use_ewc=False,
         )
@@ -382,6 +417,10 @@ class UnifiedBenchmark:
             patience=3,
             epsilon=0.005,
             ckpt_gate=0.70,
+            gate_mode=self.rgtta_gate_mode,
+            gate_min=self.rgtta_gate_min,
+            gate_max=self.rgtta_gate_max,
+            volatility_window=self.rgtta_vol_window,
             lr_sim_scale=self.lr_sim_scale,
             use_ewc=True,
             ewc_lambda=400.0,
@@ -826,7 +865,12 @@ class UnifiedBenchmark:
         """Parallel execution using multiprocessing.Pool."""
         # Build worker args — each worker creates its own UnifiedBenchmark
         worker_args = [
-            (str(self.results_dir), mk, ds, h, seed, self.model_keys, self.policies, self.use_adapter)
+            (
+                str(self.results_dir), mk, ds, h, seed,
+                self.model_keys, self.policies, self.use_adapter,
+                self.lr_sim_scale, self.rgtta_gate_mode,
+                self.rgtta_gate_min, self.rgtta_gate_max, self.rgtta_vol_window,
+            )
             for mk, ds, h, seed in jobs
         ]
 
@@ -1317,6 +1361,15 @@ def main():
     parser.add_argument("--lr-sim-scale", type=float, default=0.67,
                         help="γ (lr_sim_scale) for RG-TTA/RG-EWC smooth LR formula: "
                              "lr = lr_base × (1 + γ × (1 − sim)). Default: 0.67")
+    parser.add_argument("--rgtta-gate-mode", type=str, default="fixed",
+                        choices=["fixed", "adaptive"],
+                        help="Checkpoint loss gate mode for RG-TTA/RG-EWC (default: fixed)")
+    parser.add_argument("--rgtta-gate-min", type=float, default=0.60,
+                        help="Lower clamp for adaptive checkpoint gate (default: 0.60)")
+    parser.add_argument("--rgtta-gate-max", type=float, default=0.85,
+                        help="Upper clamp for adaptive checkpoint gate (default: 0.85)")
+    parser.add_argument("--rgtta-vol-window", type=int, default=5,
+                        help="Rolling volatility window used by adaptive gate (default: 5)")
     args = parser.parse_args()
 
     # Resolve dataset aliases
@@ -1343,10 +1396,22 @@ def main():
         results_dir=args.results_dir,
         use_adapter=args.use_adapters,
         lr_sim_scale=args.lr_sim_scale,
+        rgtta_gate_mode=args.rgtta_gate_mode,
+        rgtta_gate_min=args.rgtta_gate_min,
+        rgtta_gate_max=args.rgtta_gate_max,
+        rgtta_vol_window=args.rgtta_vol_window,
     )
     logger.info(f"Running policies: {bench.policies}")
     if args.lr_sim_scale != 0.67:
         logger.info(f"🔧 γ (lr_sim_scale) override: {args.lr_sim_scale}")
+    if args.rgtta_gate_mode != "fixed":
+        logger.info(
+            "🔧 RG gate override: mode=%s min=%.2f max=%.2f vol_window=%d",
+            args.rgtta_gate_mode,
+            args.rgtta_gate_min,
+            args.rgtta_gate_max,
+            args.rgtta_vol_window,
+        )
     if args.use_adapters:
         logger.info("🔌 Adapter injection ENABLED (D3 experiment)")
     bench.run_full(datasets=args.datasets)

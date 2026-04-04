@@ -254,6 +254,15 @@ class RGTTAForecaster:
         Minimum relative loss improvement to reset patience counter.
     ckpt_gate : float
         Checkpoint must beat current loss by this factor (0.70 = 30% better).
+    gate_mode : str
+        "fixed" (default) or "adaptive". Adaptive mode adjusts checkpoint gate
+        based on recent batch volatility and current novelty (1 - similarity).
+    gate_min : float
+        Lower bound for adaptive gate.
+    gate_max : float
+        Upper bound for adaptive gate.
+    volatility_window : int
+        Number of recent batches used as volatility baseline in adaptive mode.
     lr_sim_scale : float
         How much similarity modulates LR: lr = lr_base * (1 + scale * (1 - sim)).
     use_ewc : bool
@@ -279,6 +288,10 @@ class RGTTAForecaster:
         patience: int = 3,
         epsilon: float = 0.005,
         ckpt_gate: float = 0.70,
+        gate_mode: str = "fixed",
+        gate_min: float = 0.60,
+        gate_max: float = 0.85,
+        volatility_window: int = 5,
         lr_sim_scale: float = 0.67,
         ckpt_sim_threshold: float = 0.75,
         # Optional EWC (for rgtta_ewc variant)
@@ -325,6 +338,16 @@ class RGTTAForecaster:
         self.patience = patience
         self.epsilon = epsilon
         self.ckpt_gate = ckpt_gate
+        self.gate_mode = gate_mode
+        self.gate_min = gate_min
+        self.gate_max = gate_max
+        self.volatility_window = volatility_window
+        if self.gate_mode not in {"fixed", "adaptive"}:
+            logger.warning(f"Unknown gate_mode={self.gate_mode}; falling back to fixed")
+            self.gate_mode = "fixed"
+        if self.gate_min > self.gate_max:
+            self.gate_min, self.gate_max = self.gate_max, self.gate_min
+        self.volatility_window = max(1, int(self.volatility_window))
         self.lr_sim_scale = lr_sim_scale
         self.ckpt_sim_threshold = ckpt_sim_threshold
 
@@ -350,6 +373,47 @@ class RGTTAForecaster:
         self._last_loaded_ckpt: bool = False
         self._total_steps_all_batches: int = 0
         self._batch_count: int = 0
+        self._last_ckpt_gate_used: float = ckpt_gate
+        self._last_volatility_ratio: float = 1.0
+        self._recent_batch_volatility: List[float] = []
+
+    def _compute_dynamic_ckpt_gate(self, best_sim: float, raw_vals: np.ndarray) -> Tuple[float, float]:
+        """Compute checkpoint gate for current batch.
+
+        Returns:
+            (gate_used, volatility_ratio)
+
+        In adaptive mode we make the gate stricter on volatile/novel batches
+        (to avoid stale checkpoint loading) and looser on stable/familiar
+        batches (to encourage safe reuse).
+        """
+        if self.gate_mode != "adaptive":
+            return float(self.ckpt_gate), 1.0
+
+        std_now = float(np.std(raw_vals)) if len(raw_vals) > 1 else 0.0
+        std_now = max(std_now, 1e-8)
+
+        recent = self._recent_batch_volatility[-self.volatility_window:]
+        baseline = float(np.median(recent)) if recent else std_now
+        baseline = max(baseline, 1e-8)
+
+        volatility_ratio = std_now / baseline
+        # Map volatility ratio to [-1, 1]: <1 stable, >1 volatile
+        vol_component = np.clip(volatility_ratio - 1.0, -1.0, 1.0)
+        novelty_component = np.clip(1.0 - best_sim, 0.0, 1.0)
+
+        # Base around fixed gate, then adjust:
+        #  + volatility/novelty => stricter gate (higher threshold)
+        #  - stable/familiar => looser gate (lower threshold)
+        gate = self.ckpt_gate + 0.08 * float(vol_component) + 0.07 * float(novelty_component)
+        gate = float(np.clip(gate, self.gate_min, self.gate_max))
+
+        # Update history after computing current gate
+        self._recent_batch_volatility.append(std_now)
+        if len(self._recent_batch_volatility) > 50:
+            self._recent_batch_volatility = self._recent_batch_volatility[-50:]
+
+        return gate, float(volatility_ratio)
 
     # ------------------------------------------------------------------
     # Freeze/unfreeze helpers
@@ -678,9 +742,12 @@ class RGTTAForecaster:
             current_loss = regime_aware_loss(yt, current_pred).item()
 
         # =================================================================
-        # STEP 2: Checkpoint loading with strict loss gate
+        # STEP 2: Checkpoint loading with strict/adaptive loss gate
         # =================================================================
         loaded_checkpoint = False
+        gate_used, volatility_ratio = self._compute_dynamic_ckpt_gate(best_sim, raw_vals)
+        self._last_ckpt_gate_used = gate_used
+        self._last_volatility_ratio = volatility_ratio
         if best_state is not None and best_sim >= self.ckpt_sim_threshold:
             try:
                 saved_state = self.model.state_dict()
@@ -691,13 +758,14 @@ class RGTTAForecaster:
                     ckpt_pred = self.model(Xt, Xe)
                     ckpt_loss = regime_aware_loss(yt, ckpt_pred).item()
 
+                pre_ckpt_loss = current_loss
                 if (not math.isnan(ckpt_loss) and not math.isnan(current_loss)
-                        and ckpt_loss < current_loss * self.ckpt_gate):
+                        and ckpt_loss < current_loss * gate_used):
                     loaded_checkpoint = True
                     current_loss = ckpt_loss  # Update baseline for early stopping
                     logger.info(
                         f"🔄 RGTTA: checkpoint LOADED "
-                        f"(ckpt={ckpt_loss:.4f} < {current_loss:.4f}*{self.ckpt_gate}, "
+                        f"(ckpt={ckpt_loss:.4f} < {pre_ckpt_loss:.4f}*{gate_used:.3f}, "
                         f"sim={best_sim:.3f})")
                     if self.use_ewc:
                         self._anchor_params = {
@@ -824,6 +892,9 @@ class RGTTAForecaster:
             "steps_used": steps_used,
             "lr_used": lr,
             "loaded_checkpoint": loaded_checkpoint,
+            "ckpt_gate_used": gate_used,
+            "gate_mode": self.gate_mode,
+            "volatility_ratio": volatility_ratio,
             "final_loss": prev_loss,
             "frozen_backbone": self.freeze_backbone,
         }
