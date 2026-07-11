@@ -1,0 +1,109 @@
+\begin{thebibliography}{12}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Article
+\bibitem[{Bartlett and Mendelson(2002)}]{bartlett2002rademacher}
+\bibinfo{author}{Bartlett, P.L.}, \bibinfo{author}{Mendelson, S.},
+  \bibinfo{year}{2002}.
+\newblock \bibinfo{title}{Rademacher and {G}aussian complexities: Risk bounds
+  and structural results}.
+\newblock \bibinfo{journal}{Journal of Machine Learning Research}
+  \bibinfo{volume}{3}, \bibinfo{pages}{463--482}.
+%Type = Article
+\bibitem[{Bobkov and Ledoux(2019)}]{bobkov2019onedimensional}
+\bibinfo{author}{Bobkov, S.}, \bibinfo{author}{Ledoux, M.},
+  \bibinfo{year}{2019}.
+\newblock \bibinfo{title}{One-dimensional empirical measures, order statistics,
+  and {K}antorovich transport distances}.
+\newblock \bibinfo{journal}{Memoirs of the American Mathematical Society}
+  \bibinfo{volume}{261}.
+%Type = Inproceedings
+\bibitem[{Grover and Etemad(2025)}]{grover2025dynatta}
+\bibinfo{author}{Grover, S.}, \bibinfo{author}{Etemad, A.},
+  \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{DynaTTA}: Dynamic test-time adaptation for time
+  series forecasting}, in: \bibinfo{booktitle}{Proceedings of the 42nd
+  International Conference on Machine Learning (ICML)}.
+\newblock \bibinfo{note}{Code: \url{https://github.com/shivam-grover/DynaTTA}}.
+%Type = Inproceedings
+\bibitem[{Houlsby et~al.(2019)Houlsby, Giurgiu, Jastrzebski, Morber,
+  Larochelle, Gesmundo, Attariyan and Gelly}]{houlsby2019adapters}
+\bibinfo{author}{Houlsby, N.}, \bibinfo{author}{Giurgiu, A.},
+  \bibinfo{author}{Jastrzebski, S.}, \bibinfo{author}{Morber, B.},
+  \bibinfo{author}{Larochelle, H.}, \bibinfo{author}{Gesmundo, A.},
+  \bibinfo{author}{Attariyan, M.}, \bibinfo{author}{Gelly, S.},
+  \bibinfo{year}{2019}.
+\newblock \bibinfo{title}{Parameter-efficient transfer learning for {NLP}}, in:
+  \bibinfo{booktitle}{Proceedings of the 36th International Conference on
+  Machine Learning (ICML)}, pp. \bibinfo{pages}{2790--2799}.
+%Type = Inproceedings
+\bibitem[{Kim et~al.(2025)Kim, Grover and Etemad}]{kim2025tafas}
+\bibinfo{author}{Kim, A.}, \bibinfo{author}{Grover, S.},
+  \bibinfo{author}{Etemad, A.}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{Test-time adaptation for time series forecasting},
+  in: \bibinfo{booktitle}{Proceedings of the AAAI Conference on Artificial
+  Intelligence}.
+\newblock \bibinfo{note}{Code: \url{https://github.com/kimanki/TAFAS}}.
+%Type = Inproceedings
+\bibitem[{Lai et~al.(2018)Lai, Chang, Yang and Liu}]{lai2018modeling}
+\bibinfo{author}{Lai, G.}, \bibinfo{author}{Chang, W.C.},
+  \bibinfo{author}{Yang, Y.}, \bibinfo{author}{Liu, H.}, \bibinfo{year}{2018}.
+\newblock \bibinfo{title}{Modeling long- and short-term temporal patterns with
+  deep neural networks}, in: \bibinfo{booktitle}{The 41st International ACM
+  SIGIR Conference on Research \& Development in Information Retrieval}, pp.
+  \bibinfo{pages}{95--104}.
+%Type = Book
+\bibitem[{Ledoux(2001)}]{ledoux2001concentration}
+\bibinfo{author}{Ledoux, M.}, \bibinfo{year}{2001}.
+\newblock \bibinfo{title}{The Concentration of Measure Phenomenon}.
+\newblock \bibinfo{publisher}{American Mathematical Society}.
+%Type = Incollection
+\bibitem[{McDiarmid(1989)}]{mcdiarmid1989method}
+\bibinfo{author}{McDiarmid, C.}, \bibinfo{year}{1989}.
+\newblock \bibinfo{title}{On the method of bounded differences}, in:
+  \bibinfo{booktitle}{Surveys in Combinatorics}. \bibinfo{publisher}{Cambridge
+  University Press}, pp. \bibinfo{pages}{148--188}.
+%Type = Book
+\bibitem[{Nesterov(2004)}]{nesterov2004introductory}
+\bibinfo{author}{Nesterov, Y.}, \bibinfo{year}{2004}.
+\newblock \bibinfo{title}{Introductory Lectures on Convex Optimization: A Basic
+  Course}.
+\newblock \bibinfo{publisher}{Springer}.
+%Type = Book
+\bibitem[{van~der Vaart(1998)}]{vaart1998asymptotic}
+\bibinfo{author}{van~der Vaart, A.W.}, \bibinfo{year}{1998}.
+\newblock \bibinfo{title}{Asymptotic Statistics}.
+\newblock \bibinfo{publisher}{Cambridge University Press}.
+%Type = Inproceedings
+\bibitem[{Wu et~al.(2021)Wu, Xu, Wang and Long}]{wu2021autoformer}
+\bibinfo{author}{Wu, H.}, \bibinfo{author}{Xu, J.}, \bibinfo{author}{Wang, J.},
+  \bibinfo{author}{Long, M.}, \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{Autoformer: Decomposition transformers with
+  auto-correlation for long-term series forecasting}, in:
+  \bibinfo{booktitle}{Advances in Neural Information Processing Systems
+  (NeurIPS)}.
+%Type = Inproceedings
+\bibitem[{Zhou et~al.(2021)Zhou, Zhang, Peng, Zhang, Li, Xiong and
+  Zhang}]{zhou2021informer}
+\bibinfo{author}{Zhou, H.}, \bibinfo{author}{Zhang, S.}, \bibinfo{author}{Peng,
+  J.}, \bibinfo{author}{Zhang, S.}, \bibinfo{author}{Li, J.},
+  \bibinfo{author}{Xiong, H.}, \bibinfo{author}{Zhang, W.},
+  \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{Informer: Beyond efficient transformer for long
+  sequence time-series forecasting}, in: \bibinfo{booktitle}{Proceedings of the
+  AAAI Conference on Artificial Intelligence}, pp.
+  \bibinfo{pages}{11106--11115}.
+\newblock \bibinfo{note}{ETT dataset introduced here; data:
+  \url{https://github.com/zhouhaoyi/ETDataset}}.
+
+\end{thebibliography}

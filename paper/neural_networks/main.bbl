@@ -1,0 +1,201 @@
+\begin{thebibliography}{22}
+\expandafter\ifx\csname natexlab\endcsname\relax\def\natexlab#1{#1}\fi
+\providecommand{\url}[1]{\texttt{#1}}
+\providecommand{\href}[2]{#2}
+\providecommand{\path}[1]{#1}
+\providecommand{\DOIprefix}{doi:}
+\providecommand{\ArXivprefix}{arXiv:}
+\providecommand{\URLprefix}{URL: }
+\providecommand{\Pubmedprefix}{pmid:}
+\providecommand{\doi}[1]{\href{http://dx.doi.org/#1}{\path{#1}}}
+\providecommand{\Pubmed}[1]{\href{pmid:#1}{\path{#1}}}
+\providecommand{\bibinfo}[2]{#2}
+\ifx\xfnm\relax \def\xfnm[#1]{\unskip,\space#1}\fi
+%Type = Article
+\bibitem[{Benidis et~al.(2023)Benidis, Rangapuram, Flunkert, Wang, Maddix,
+  Turkmen, Gasthaus, Bohlke-Schneider, Salinas, Stella, Aubet, Callot and
+  Januschowski}]{benidis2023deep}
+\bibinfo{author}{Benidis, K.}, \bibinfo{author}{Rangapuram, S.S.},
+  \bibinfo{author}{Flunkert, V.}, \bibinfo{author}{Wang, Y.},
+  \bibinfo{author}{Maddix, D.}, \bibinfo{author}{Turkmen, C.},
+  \bibinfo{author}{Gasthaus, J.}, \bibinfo{author}{Bohlke-Schneider, M.},
+  \bibinfo{author}{Salinas, D.}, \bibinfo{author}{Stella, L.},
+  \bibinfo{author}{Aubet, F.X.}, \bibinfo{author}{Callot, L.},
+  \bibinfo{author}{Januschowski, T.}, \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{Deep learning for time series forecasting: Tutorial
+  and literature survey}.
+\newblock \bibinfo{journal}{ACM Computing Surveys} \bibinfo{volume}{55},
+  \bibinfo{pages}{1--36}.
+%Type = Inproceedings
+\bibitem[{Cho et~al.(2014)Cho, van Merri{\"e}nboer, Gulcehre, Bahdanau,
+  Bougares, Schwenk and Bengio}]{cho2014gru}
+\bibinfo{author}{Cho, K.}, \bibinfo{author}{van Merri{\"e}nboer, B.},
+  \bibinfo{author}{Gulcehre, C.}, \bibinfo{author}{Bahdanau, D.},
+  \bibinfo{author}{Bougares, F.}, \bibinfo{author}{Schwenk, H.},
+  \bibinfo{author}{Bengio, Y.}, \bibinfo{year}{2014}.
+\newblock \bibinfo{title}{Learning phrase representations using {RNN}
+  encoder-decoder for statistical machine translation}, in:
+  \bibinfo{booktitle}{Proceedings of the 2014 Conference on Empirical Methods
+  in Natural Language Processing (EMNLP)}, pp. \bibinfo{pages}{1724--1734}.
+%Type = Article
+\bibitem[{Dem\v{s}ar(2006)}]{demsar2006statistical}
+\bibinfo{author}{Dem\v{s}ar, J.}, \bibinfo{year}{2006}.
+\newblock \bibinfo{title}{Statistical comparisons of classifiers over multiple
+  data sets}.
+\newblock \bibinfo{journal}{Journal of Machine Learning Research}
+  \bibinfo{volume}{7}, \bibinfo{pages}{1--30}.
+%Type = Article
+\bibitem[{Friedman(1937)}]{friedman1937}
+\bibinfo{author}{Friedman, M.}, \bibinfo{year}{1937}.
+\newblock \bibinfo{title}{The use of ranks to avoid the assumption of normality
+  implicit in the analysis of variance}.
+\newblock \bibinfo{journal}{Journal of the American Statistical Association}
+  \bibinfo{volume}{32}, \bibinfo{pages}{675--701}.
+%Type = Article
+\bibitem[{Gama et~al.(2014)Gama, {\v{Z}}liobait{\.e}, Bifet, Pechenizkiy and
+  Bouchachia}]{gama2014concept}
+\bibinfo{author}{Gama, J.}, \bibinfo{author}{{\v{Z}}liobait{\.e}, I.},
+  \bibinfo{author}{Bifet, A.}, \bibinfo{author}{Pechenizkiy, M.},
+  \bibinfo{author}{Bouchachia, A.}, \bibinfo{year}{2014}.
+\newblock \bibinfo{title}{A survey on concept drift adaptation}.
+\newblock \bibinfo{journal}{ACM Computing Surveys} \bibinfo{volume}{46},
+  \bibinfo{pages}{1--37}.
+%Type = Inproceedings
+\bibitem[{Grover and Etemad(2025)}]{grover2025dynatta}
+\bibinfo{author}{Grover, S.}, \bibinfo{author}{Etemad, A.},
+  \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{{DynaTTA}: Dynamic test-time adaptation for time
+  series forecasting}, in: \bibinfo{booktitle}{Proceedings of the 42nd
+  International Conference on Machine Learning (ICML)}.
+\newblock \bibinfo{note}{Code: \url{https://github.com/shivam-grover/DynaTTA}}.
+%Type = Article
+\bibitem[{Hamilton(1989)}]{hamilton1989}
+\bibinfo{author}{Hamilton, J.D.}, \bibinfo{year}{1989}.
+\newblock \bibinfo{title}{A new approach to the economic analysis of
+  nonstationary time series and the business cycle}.
+\newblock \bibinfo{journal}{Econometrica} \bibinfo{volume}{57},
+  \bibinfo{pages}{357--384}.
+%Type = Article
+\bibitem[{Huber(1964)}]{huber1964robust}
+\bibinfo{author}{Huber, P.J.}, \bibinfo{year}{1964}.
+\newblock \bibinfo{title}{Robust estimation of a location parameter}.
+\newblock \bibinfo{journal}{The Annals of Mathematical Statistics}
+  \bibinfo{volume}{35}, \bibinfo{pages}{73--101}.
+%Type = Inproceedings
+\bibitem[{Kim et~al.(2025)Kim, Grover and Etemad}]{kim2025tafas}
+\bibinfo{author}{Kim, A.}, \bibinfo{author}{Grover, S.},
+  \bibinfo{author}{Etemad, A.}, \bibinfo{year}{2025}.
+\newblock \bibinfo{title}{Test-time adaptation for time series forecasting},
+  in: \bibinfo{booktitle}{Proceedings of the AAAI Conference on Artificial
+  Intelligence}.
+\newblock \bibinfo{note}{Code: \url{https://github.com/kimanki/TAFAS}}.
+%Type = Article
+\bibitem[{Kirkpatrick et~al.(2017)Kirkpatrick, Pascanu, Rabinowitz, Vinyals,
+  Desjardins, Rusu, Milan, Quan, Ramalho, Grabska-Barwinska
+  et~al.}]{kirkpatrick2017ewc}
+\bibinfo{author}{Kirkpatrick, J.}, \bibinfo{author}{Pascanu, R.},
+  \bibinfo{author}{Rabinowitz, N.}, \bibinfo{author}{Vinyals, O.},
+  \bibinfo{author}{Desjardins, G.}, \bibinfo{author}{Rusu, A.A.},
+  \bibinfo{author}{Milan, K.}, \bibinfo{author}{Quan, J.},
+  \bibinfo{author}{Ramalho, T.}, \bibinfo{author}{Grabska-Barwinska, A.},
+  et~al., \bibinfo{year}{2017}.
+\newblock \bibinfo{title}{Overcoming catastrophic forgetting in neural
+  networks}.
+\newblock \bibinfo{journal}{Proceedings of the National Academy of Sciences}
+  \bibinfo{volume}{114}, \bibinfo{pages}{3521--3526}.
+%Type = Inproceedings
+\bibitem[{Lai et~al.(2018)Lai, Chang, Yang and Liu}]{lai2018modeling}
+\bibinfo{author}{Lai, G.}, \bibinfo{author}{Chang, W.C.},
+  \bibinfo{author}{Yang, Y.}, \bibinfo{author}{Liu, H.}, \bibinfo{year}{2018}.
+\newblock \bibinfo{title}{Modeling long- and short-term temporal patterns with
+  deep neural networks}, in: \bibinfo{booktitle}{The 41st International ACM
+  SIGIR Conference on Research \& Development in Information Retrieval}, pp.
+  \bibinfo{pages}{95--104}.
+%Type = Article
+\bibitem[{Liang et~al.(2024)Liang, He and Tan}]{liang2024tta}
+\bibinfo{author}{Liang, J.}, \bibinfo{author}{He, R.}, \bibinfo{author}{Tan,
+  T.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{A comprehensive survey on test-time adaptation under
+  distribution shifts}.
+\newblock \bibinfo{journal}{International Journal of Computer Vision}
+  \bibinfo{volume}{132}, \bibinfo{pages}{4112--4145}.
+%Type = Article
+\bibitem[{Lim and Zohren(2021)}]{lim2021timeseries}
+\bibinfo{author}{Lim, B.}, \bibinfo{author}{Zohren, S.}, \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{Time-series forecasting with deep learning: A
+  survey}.
+\newblock \bibinfo{journal}{Philosophical Transactions of the Royal Society A}
+  \bibinfo{volume}{379}, \bibinfo{pages}{20200209}.
+%Type = Inproceedings
+\bibitem[{Liu et~al.(2024)Liu, Hu, Zhang, Wu, Wang, Ma and
+  Long}]{liu2024itransformer}
+\bibinfo{author}{Liu, Y.}, \bibinfo{author}{Hu, T.}, \bibinfo{author}{Zhang,
+  H.}, \bibinfo{author}{Wu, H.}, \bibinfo{author}{Wang, S.},
+  \bibinfo{author}{Ma, L.}, \bibinfo{author}{Long, M.}, \bibinfo{year}{2024}.
+\newblock \bibinfo{title}{{iTransformer}: Inverted transformers are effective
+  for time series forecasting}, in: \bibinfo{booktitle}{International
+  Conference on Learning Representations (ICLR)}.
+%Type = Article
+\bibitem[{Lu et~al.(2018)Lu, Liu, Dong, Gu, Gama and Zhang}]{lu2018concept}
+\bibinfo{author}{Lu, J.}, \bibinfo{author}{Liu, A.}, \bibinfo{author}{Dong,
+  F.}, \bibinfo{author}{Gu, F.}, \bibinfo{author}{Gama, J.},
+  \bibinfo{author}{Zhang, G.}, \bibinfo{year}{2018}.
+\newblock \bibinfo{title}{Learning under concept drift: A review}.
+\newblock \bibinfo{journal}{IEEE Transactions on Knowledge and Data
+  Engineering} \bibinfo{volume}{31}, \bibinfo{pages}{2346--2363}.
+%Type = Article
+\bibitem[{Massey(1951)}]{massey1951ks}
+\bibinfo{author}{Massey, F.J.}, \bibinfo{year}{1951}.
+\newblock \bibinfo{title}{The {K}olmogorov-{S}mirnov test for goodness of fit}.
+\newblock \bibinfo{journal}{Journal of the American Statistical Association}
+  \bibinfo{volume}{46}, \bibinfo{pages}{68--78}.
+%Type = Inproceedings
+\bibitem[{Nie et~al.(2023)Nie, Nguyen, Sinthong and
+  Kalagnanam}]{nie2023patchtst}
+\bibinfo{author}{Nie, Y.}, \bibinfo{author}{Nguyen, N.H.},
+  \bibinfo{author}{Sinthong, P.}, \bibinfo{author}{Kalagnanam, J.},
+  \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{A time series is worth 64 words: Long-term
+  forecasting with transformers}, in: \bibinfo{booktitle}{International
+  Conference on Learning Representations (ICLR)}.
+%Type = Book
+\bibitem[{Villani(2009)}]{villani2009optimal}
+\bibinfo{author}{Villani, C.}, \bibinfo{year}{2009}.
+\newblock \bibinfo{title}{Optimal Transport: Old and New}.
+\newblock \bibinfo{publisher}{Springer}.
+%Type = Article
+\bibitem[{Wilcoxon(1945)}]{wilcoxon1945}
+\bibinfo{author}{Wilcoxon, F.}, \bibinfo{year}{1945}.
+\newblock \bibinfo{title}{Individual comparisons by ranking methods}.
+\newblock \bibinfo{journal}{Biometrics Bulletin} \bibinfo{volume}{1},
+  \bibinfo{pages}{80--83}.
+%Type = Inproceedings
+\bibitem[{Wu et~al.(2021)Wu, Xu, Wang and Long}]{wu2021autoformer}
+\bibinfo{author}{Wu, H.}, \bibinfo{author}{Xu, J.}, \bibinfo{author}{Wang, J.},
+  \bibinfo{author}{Long, M.}, \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{Autoformer: Decomposition transformers with
+  auto-correlation for long-term series forecasting}, in:
+  \bibinfo{booktitle}{Advances in Neural Information Processing Systems
+  (NeurIPS)}.
+%Type = Inproceedings
+\bibitem[{Zeng et~al.(2023)Zeng, Chen, Zhang and Xu}]{zeng2023dlinear}
+\bibinfo{author}{Zeng, A.}, \bibinfo{author}{Chen, M.}, \bibinfo{author}{Zhang,
+  L.}, \bibinfo{author}{Xu, Q.}, \bibinfo{year}{2023}.
+\newblock \bibinfo{title}{Are transformers effective for time series
+  forecasting?}, in: \bibinfo{booktitle}{Proceedings of the AAAI Conference on
+  Artificial Intelligence}, pp. \bibinfo{pages}{11121--11128}.
+%Type = Inproceedings
+\bibitem[{Zhou et~al.(2021)Zhou, Zhang, Peng, Zhang, Li, Xiong and
+  Zhang}]{zhou2021informer}
+\bibinfo{author}{Zhou, H.}, \bibinfo{author}{Zhang, S.}, \bibinfo{author}{Peng,
+  J.}, \bibinfo{author}{Zhang, S.}, \bibinfo{author}{Li, J.},
+  \bibinfo{author}{Xiong, H.}, \bibinfo{author}{Zhang, W.},
+  \bibinfo{year}{2021}.
+\newblock \bibinfo{title}{Informer: Beyond efficient transformer for long
+  sequence time-series forecasting}, in: \bibinfo{booktitle}{Proceedings of the
+  AAAI Conference on Artificial Intelligence}, pp.
+  \bibinfo{pages}{11106--11115}.
+\newblock \bibinfo{note}{ETT dataset introduced here; data:
+  \url{https://github.com/zhouhaoyi/ETDataset}}.
+
+\end{thebibliography}

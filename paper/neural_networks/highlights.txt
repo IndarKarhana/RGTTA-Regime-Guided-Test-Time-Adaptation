@@ -1,0 +1,7 @@
+Highlights
+
+- RG-TTA modulates adaptation intensity by distributional similarity
+- Regime-guided policies win 69.6% across 672 experimental configs
+- RG-EWC reduces MSE by 14.1% vs standalone EWC (p < 1e-10)
+- Model-agnostic meta-controller composable with TTA, EWC, DynaTTA
+- 27% median MSE reduction vs retraining at 15-30x lower cost

@@ -73,8 +73,13 @@ benchmarks/*_backup*
 # Scripts (internal VM/cloud/analysis)
 scripts/
 
-# Paper (kept locally, not in repo)
-paper/
+# Paper build artifacts
+paper/**/*.aux
+paper/**/*.blg
+paper/**/*.log
+paper/**/*.out
+paper/**/*.spl
+paper/**/~$*
 
 # Generated / lock files
 poetry.lock
