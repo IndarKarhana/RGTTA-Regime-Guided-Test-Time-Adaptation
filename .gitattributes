@@ -1,0 +1,3 @@
+# Preserve standard CSV line endings and the unmodified upstream LaTeX class.
+benchmarks/results/final_validated/*.csv whitespace=cr-at-eol
+paper/IEEEtran.cls -whitespace

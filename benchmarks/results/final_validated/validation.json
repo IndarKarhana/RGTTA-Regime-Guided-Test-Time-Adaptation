@@ -1,0 +1,21 @@
+{
+  "validated": true,
+  "main_experiments": 672,
+  "main_policy_results": 4704,
+  "reviewer_experiments": 93,
+  "reviewer_policy_results": 204,
+  "official_experiments": 6,
+  "official_policy_results": 18,
+  "failed_dlinear_runs_replaced": 168,
+  "archive_sha256": {
+    "legacy": "d1bbe6a2383cdf9a9ce9a7dbc1f3d08b2d6f9ff16e42f52db7e48ed823061bf7",
+    "resume": "4ec48df5a2da66ebaf6d082cfaa0f0259f6eee3b677d13b3e50fc37fb7ec9e2a",
+    "reviewer": "efca7b38ec3d7a27b22b859c188bc01ea9206fd1306c29b95538be357bdc7631"
+  },
+  "caveats": [
+    "Released-code official results use a separate protocol; no RG results in that protocol.",
+    "Three seeds quantify initialization variability, not temporal independence.",
+    "Retraining has a different training recipe and compute budget.",
+    "Larger-model and feature studies are focused H96 experiments, not foundation-model evidence."
+  ]
+}

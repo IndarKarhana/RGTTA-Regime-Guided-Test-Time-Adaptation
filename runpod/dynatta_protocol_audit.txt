@@ -1,0 +1,9 @@
+Official DynaTTA source commit 03c3cd9568ee9affa5617efa3c8dbc0224bf9a06
+Repository: https://github.com/shivam-grover/DynaTTA
+Published code ETA=.1; warmup=WARMUP_FACTOR*PRED_LEN.
+Current local baseline ETA=.1; warmup=WARMUP_FACTOR*tta_steps*3.
+Thus the current code already matches published EMA=.1, but differs in warmup and evaluation protocol.
+Official main.py imports absent models.build, utils.parser, datasets.build, trainer, predictor, config.
+DynaTTA.py references TAFAS calibration/partial-GT adaptation. Current local reimplementation is not that full pipeline.
+The new sensitivity study isolates ETA and warmup under a common causal batch protocol.
+It must not be described as a faithful original-protocol reproduction.

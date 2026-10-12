@@ -1,0 +1,18 @@
+Validated revision, 2026-10-12
+
+Use final_validated/validation.json, per_seed.csv and main_tables.csv for the
+current evidence. All 672 main settings have seven successful policies (4,704
+policy results). The three affected RG policies are from the corrected rollback
+runs. Retrain comprises 504 original successful jobs plus 168 DLinear jobs with
+the tested lazy-initialization fix. Original failed jobs are retained in archives
+for audit and excluded from the final matrix.
+
+The original full-session RG outputs and historical paper/main.tex are superseded.
+The frozen legacy manuscript is not submission-ready evidence. The current draft
+is paper/ieee_revision.tex and .pdf.
+
+Released-code DynaTTA/TAFAS results are separate standardized multivariate sliding
+protocol results, not directly comparable to the causal target-only batch matrix.
+Their completion does not establish exact reproduction of published tables or
+independent causal verification of the upstream prediction-adjustment logic.
+See paper/revision_notes.txt for scientific limitations and unresolved comparisons.

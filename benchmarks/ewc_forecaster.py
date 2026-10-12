@@ -23,6 +23,7 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import pandas as pd
 import torch
+from regime_forecasting.utils.rnn_grad import evaluation_rnn_grad
 import torch.nn as nn
 import torch.optim as optim
 
@@ -174,33 +175,34 @@ class EWCForecaster:
     ) -> Dict[str, torch.Tensor]:
         """Estimate diagonal Fisher information from data."""
         self.model.eval()
-        fisher = {n: torch.zeros_like(p) for n, p in self.model.named_parameters() if p.requires_grad}
+        with evaluation_rnn_grad(self.model):
+            fisher = {n: torch.zeros_like(p) for n, p in self.model.named_parameters() if p.requires_grad}
 
-        n_used = min(n_samples, len(X_target))
-        indices = np.random.choice(len(X_target), n_used, replace=False)
+            n_used = min(n_samples, len(X_target))
+            indices = np.random.choice(len(X_target), n_used, replace=False)
 
-        for idx in indices:
-            self.model.zero_grad()
-            xt = X_target[idx : idx + 1]
-            xe = X_exog[idx : idx + 1] if X_exog is not None else None
-            yt = y[idx : idx + 1]
+            for idx in indices:
+                self.model.zero_grad()
+                xt = X_target[idx : idx + 1]
+                xe = X_exog[idx : idx + 1] if X_exog is not None else None
+                yt = y[idx : idx + 1]
 
-            pred = self.model(xt, xe)
-            loss = regime_aware_loss(yt, pred)
-            if torch.isnan(loss) or torch.isinf(loss):
-                continue
-            loss.backward()
+                pred = self.model(xt, xe)
+                loss = regime_aware_loss(yt, pred)
+                if torch.isnan(loss) or torch.isinf(loss):
+                    continue
+                loss.backward()
 
-            for n, p in self.model.named_parameters():
-                if p.requires_grad and p.grad is not None:
-                    fisher[n] += p.grad.data.clone() ** 2
+                for n, p in self.model.named_parameters():
+                    if p.requires_grad and p.grad is not None:
+                        fisher[n] += p.grad.data.clone() ** 2
 
-        # Average
-        for n in fisher:
-            fisher[n] /= max(n_used, 1)
-            fisher[n] = torch.clamp(fisher[n], 0, 1e4)
+            # Average
+            for n in fisher:
+                fisher[n] /= max(n_used, 1)
+                fisher[n] = torch.clamp(fisher[n], 0, 1e4)
 
-        return fisher
+            return fisher
 
     def _ewc_penalty(self) -> torch.Tensor:
         """Compute EWC penalty: sum_i F_i * (theta_i - theta*_i)^2."""
@@ -482,9 +484,9 @@ class EWCForecaster:
 
         # Build a single sequence from the most recent data
         X_target_seq, X_exog_seq, _ = prepare_sequences(
-            context_df.tail(self.sequence_length + self.forecast_horizon),
+            context_df.tail(self.sequence_length),
             sequence_length=self.sequence_length,
-            forecast_horizon=self.forecast_horizon,
+            forecast_horizon=0,  # Inference consumes all observed context; no label suffix.
             exog_cols=self.exog_cols,
             feature_cols=getattr(self, '_scaled_feature_cols', None),
         )

@@ -1,0 +1,31 @@
+Released-code DynaTTA reproduction, scoped comparison
+
+DynaTTA: https://github.com/shivam-grover/DynaTTA
+Commit: 03c3cd9568ee9affa5617efa3c8dbc0224bf9a06
+Framework: https://github.com/kimanki/TAFAS
+Commit: 139bf980671da4daad728a0fc21d8df508b9203d
+
+The DynaTTA adapter source is copied byte-for-byte, not reimplemented. The upstream
+TAFAS framework supplies models, training, preprocessing, loaders and calibration.
+Three device-portability substitutions in TAFAS allow CPU smoke tests; CUDA
+behavior is unchanged. The exact patch and hashes are archived.
+
+Scope: official iTransformer, ETTh1 and ETTh2, H=96, seeds 0/1/2. Train fresh source
+checkpoints using the framework defaults (30 epochs, 512 width, 4 layers), choose
+checkpoints by upstream validation metric, and compare frozen/TAFAS/DynaTTA from
+the same checkpoint. Use the upstream iTransformer run-script settings for TTA
+optimizer LR=.001, weight decay=0 and GCM initial gate=.01. DynaTTA sets its own
+published-code dynamic-LR defaults (EMA=.1, warmup=H). Save each resolved config.
+
+Original released evaluation: full multivariate standardized test split; all test
+windows are evaluated, with period-aware batching, partial/full ground-truth
+updates and prediction adjustment exactly as in released adapters. The released
+code does not impose a fixed 500-window truncation. These scores are not directly
+comparable to the target-only causal batch scores of the main RG matrix.
+
+This runs the released pipeline using newly trained checkpoints. It does not
+claim exact numerical reproduction of every published paper table: the DynaTTA
+repository does not release its complete experiment configs or trained checkpoints,
+and the paper PDF could not be accessed from OpenReview in this session. Missing
+paper-specific settings are not guessed. CPU smoke results are excluded from
+scientific tables. Production results must be labeled with this scope.

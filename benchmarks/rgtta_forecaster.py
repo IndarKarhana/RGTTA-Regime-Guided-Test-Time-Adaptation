@@ -32,6 +32,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 import pandas as pd
 import torch
+from regime_forecasting.utils.rnn_grad import evaluation_rnn_grad
 import torch.nn as nn
 import torch.optim as optim
 from scipy.stats import ks_2samp
@@ -309,9 +310,15 @@ class RGTTAForecaster:
         use_adapter: bool = False,
         adapter_bottleneck: int = 16,
         model_key: str = "",
+        feature_mode: str = "marginal",
+        use_loss_gate: bool = True,
         # Legacy compatibility (ignored)
         **kwargs,
     ):
+        if feature_mode not in {"target", "marginal", "dependence"}:
+            raise ValueError("Unknown regime feature mode")
+        self.use_loss_gate = use_loss_gate
+        self.feature_mode = feature_mode
         self.season_length = season_length
         self.forecast_horizon = forecast_horizon
         self.sequence_length = sequence_length
@@ -376,6 +383,15 @@ class RGTTAForecaster:
         self._last_ckpt_gate_used: float = ckpt_gate
         self._last_volatility_ratio: float = 1.0
         self._recent_batch_volatility: List[float] = []
+
+    def _regime_signature(self, df):
+        if self.feature_mode == "target":
+            return _distribution_features(df["y"].to_numpy(dtype=float))
+        marginal = _multivariate_distribution_features(df, self.feature_cols)
+        if self.feature_mode == "dependence":
+            from benchmarks.regime_features import dependence_signature
+            return dependence_signature(df, self.feature_cols, marginal)
+        return marginal
 
     def _compute_dynamic_ckpt_gate(self, best_sim: float, raw_vals: np.ndarray) -> Tuple[float, float]:
         """Compute checkpoint gate for current batch.
@@ -478,26 +494,27 @@ class RGTTAForecaster:
     ) -> Dict[str, torch.Tensor]:
         """Estimate diagonal Fisher information."""
         self.model.eval()
-        fisher = {n: torch.zeros_like(p) for n, p in self.model.named_parameters() if p.requires_grad}
-        n_used = min(n_samples, len(Xt))
-        indices = np.random.choice(len(Xt), n_used, replace=False)
-        for idx in indices:
-            self.model.zero_grad()
-            xt = Xt[idx : idx + 1]
-            xe = Xe[idx : idx + 1] if Xe is not None else None
-            y1 = yt[idx : idx + 1]
-            pred = self.model(xt, xe)
-            loss = regime_aware_loss(y1, pred)
-            if torch.isnan(loss) or torch.isinf(loss):
-                continue
-            loss.backward()
-            for n, p in self.model.named_parameters():
-                if p.requires_grad and p.grad is not None:
-                    fisher[n] += p.grad.data.clone() ** 2
-        for n in fisher:
-            fisher[n] /= max(n_used, 1)
-            fisher[n] = torch.clamp(fisher[n], 0, 1e4)
-        return fisher
+        with evaluation_rnn_grad(self.model):
+            fisher = {n: torch.zeros_like(p) for n, p in self.model.named_parameters() if p.requires_grad}
+            n_used = min(n_samples, len(Xt))
+            indices = np.random.choice(len(Xt), n_used, replace=False)
+            for idx in indices:
+                self.model.zero_grad()
+                xt = Xt[idx : idx + 1]
+                xe = Xe[idx : idx + 1] if Xe is not None else None
+                y1 = yt[idx : idx + 1]
+                pred = self.model(xt, xe)
+                loss = regime_aware_loss(y1, pred)
+                if torch.isnan(loss) or torch.isinf(loss):
+                    continue
+                loss.backward()
+                for n, p in self.model.named_parameters():
+                    if p.requires_grad and p.grad is not None:
+                        fisher[n] += p.grad.data.clone() ** 2
+            for n in fisher:
+                fisher[n] /= max(n_used, 1)
+                fisher[n] = torch.clamp(fisher[n], 0, 1e4)
+            return fisher
 
     def _ewc_penalty(self) -> torch.Tensor:
         if self._fisher is None or self._anchor_params is None:
@@ -637,7 +654,7 @@ class RGTTAForecaster:
 
         # Store initial regime in memory (with raw values for KS/Wasserstein)
         raw_vals = df["y"].dropna().values.astype(np.float64)
-        init_features = _multivariate_distribution_features(df, self.feature_cols)
+        init_features = self._regime_signature(df)
         self._memory.store(init_features, self.model.state_dict(), raw_values=raw_vals)
 
         # Compute initial Fisher + anchor only when EWC is enabled.
@@ -697,7 +714,7 @@ class RGTTAForecaster:
 
         # --- Distribution features (for memory + similarity) ---
         raw_vals = new_df["y"].dropna().values.astype(np.float64)
-        new_features = _multivariate_distribution_features(new_df, self.feature_cols)
+        new_features = self._regime_signature(new_df)
         best_sim, best_state = self._memory.query(new_features, raw_values=raw_vals)
         self._last_similarity = best_sim
 
@@ -750,7 +767,7 @@ class RGTTAForecaster:
         self._last_volatility_ratio = volatility_ratio
         if best_state is not None and best_sim >= self.ckpt_sim_threshold:
             try:
-                saved_state = self.model.state_dict()
+                saved_state = {k: v.detach().clone() for k, v in self.model.state_dict().items()}
                 self.model.load_state_dict(
                     {k: v.to(self.device) for k, v in best_state.items()}
                 )
@@ -760,7 +777,7 @@ class RGTTAForecaster:
 
                 pre_ckpt_loss = current_loss
                 if (not math.isnan(ckpt_loss) and not math.isnan(current_loss)
-                        and ckpt_loss < current_loss * gate_used):
+                        and (not self.use_loss_gate or ckpt_loss < current_loss * gate_used)):
                     loaded_checkpoint = True
                     current_loss = ckpt_loss  # Update baseline for early stopping
                     logger.info(
@@ -926,9 +943,9 @@ class RGTTAForecaster:
 
         # Build a single sequence from the most recent data
         X_target_seq, X_exog_seq, _ = prepare_sequences(
-            context_df.tail(self.sequence_length + self.forecast_horizon),
+            context_df.tail(self.sequence_length),
             sequence_length=self.sequence_length,
-            forecast_horizon=self.forecast_horizon,
+            forecast_horizon=0,  # Inference consumes all observed context; no label suffix.
             exog_cols=self.exog_cols,
             feature_cols=getattr(self, '_scaled_feature_cols', None),
         )
