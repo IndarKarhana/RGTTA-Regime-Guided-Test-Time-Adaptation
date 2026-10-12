@@ -1,0 +1,14 @@
+\begin{tabular}{llrrrrrr}
+\toprule
+Backbone & Update scope & Total & Adapted & TTA MSE & RG MSE & Time T/R (s) & Peak MiB \\
+\midrule
+iTransformer & Compact/head & 123,040 & 6,240 & $35.08\pm3.33$ & $24.34\pm0.75$ & 4.05/3.65 & 51 \\
+iTransformer & Larger/head & 3,299,616 & 24,672 & $30.41\pm1.70$ & $29.90\pm2.07$ & 5.71/5.45 & 174 \\
+iTransformer & Larger/adapter+head & 3,335,520 & 60,576 & $22.77\pm1.23$ & $22.65\pm1.11$ & 9.29/9.76 & 442 \\
+iTransformer & Larger/full & 3,299,616 & 3,299,616 & $25.40\pm1.02$ & $26.84\pm2.25$ & 8.44/8.24 & 663 \\
+PatchTST & Compact/head & 191,602 & 67,680 & $182.22\pm2.81$ & $178.08\pm1.64$ & 4.51/4.46 & 284 \\
+PatchTST & Larger/head & 3,469,362 & 270,432 & $128.46\pm19.36$ & $172.45\pm20.02$ & 12.36/10.54 & 1110 \\
+PatchTST & Larger/adapter+head & 3,505,266 & 306,336 & $91.50\pm21.19$ & $115.33\pm54.84$ & 23.46/20.23 & 3951 \\
+PatchTST & Larger/full & 3,469,362 & 3,469,362 & $78.24\pm5.64$ & $62.67\pm12.51$ & 26.67/31.07 & 6048 \\
+\bottomrule
+\end{tabular}

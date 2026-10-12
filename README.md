@@ -1,5 +1,17 @@
 # RG-TTA: Regime-Guided Test-Time Adaptation for Streaming Time Series Forecasting
 
+> **Validated revision (2026-10-12):** See [the revised PDF](paper/ieee_revision.pdf),
+> [source](paper/ieee_revision.tex), and [validation report](benchmarks/results/final_validated/validation.json).
+> The completed causal matrix contains 672 settings and 4,704 policy results,
+> plus 93 focused reviewer studies and six separate released-code comparisons.
+> Corrected RG-TTA has geometric MSE ratios of 0.950 (real) and 0.919 (synthetic)
+> relative to TTA, at 1.41x and 1.44x measured total time. Benefits are not universal.
+> Final tables: `benchmarks/results/final_validated/`; revision notes: `paper/revision_notes.txt`.
+> The historical claims below and `paper/main.tex` are preserved as legacy material;
+> they are **not** the validated results or current submission draft.
+> TAFAS is available only in the separate restored upstream experiment framework,
+> not as a policy in the local main-matrix runner.
+
 [![arXiv](https://img.shields.io/badge/arXiv-2603.27814-b31b1b.svg)](https://arxiv.org/abs/2603.27814)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)

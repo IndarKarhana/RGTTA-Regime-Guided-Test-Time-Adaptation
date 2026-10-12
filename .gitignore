@@ -5,6 +5,8 @@ __pycache__/
 
 # Environments
 .venv/
+.venv-runpod/
+runpod/environment-resolved.txt
 venv/
 env/
 ENV/

@@ -879,7 +879,7 @@ class RGTTADynaTTAForecaster:
         tier_label = "mid"  # default diagnostic label
         if best_sim >= 0.75 and best_state is not None:
             try:
-                saved_state = self.model.state_dict()
+                saved_state = {k: v.detach().clone() for k, v in self.model.state_dict().items()}
                 self.model.load_state_dict(
                     {k: v.to(self.device) for k, v in best_state.items()}
                 )
@@ -1051,9 +1051,9 @@ class RGTTADynaTTAForecaster:
 
         # Build a single sequence from the most recent data
         X_target_seq, X_exog_seq, _ = prepare_sequences(
-            context_df.tail(self.sequence_length + self.forecast_horizon),
+            context_df.tail(self.sequence_length),
             sequence_length=self.sequence_length,
-            forecast_horizon=self.forecast_horizon,
+            forecast_horizon=0,  # Inference consumes all observed context; no label suffix.
             exog_cols=self.exog_cols,
             feature_cols=getattr(self, '_scaled_feature_cols', None),
         )

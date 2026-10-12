@@ -601,9 +601,9 @@ class CorrectedRegimeForecaster:
 
         # Build a single sequence from the most recent data (direct multi-horizon prediction)
         X_target_seq, X_exog_seq, _ = prepare_sequences(
-            context_df.tail(self.sequence_length + self.forecast_horizon),
+            context_df.tail(self.sequence_length),
             sequence_length=self.sequence_length,
-            forecast_horizon=self.forecast_horizon,
+            forecast_horizon=0,  # Consume all observed context at inference.
             exog_cols=self.exog_cols,
             feature_cols=getattr(self, '_scaled_feature_cols', None),
         )
@@ -800,6 +800,11 @@ class CorrectedRegimeForecaster:
         if torch.isnan(y_tensor).any() or torch.isinf(y_tensor).any():
             logger.warning("⚠️ NaN/Inf detected in targets, replacing with 0")
             y_tensor = torch.nan_to_num(y_tensor, nan=0.0, posinf=0.0, neginf=0.0)
+
+        # DLinear creates its parameters on its first forward pass.
+        if next(self.model.parameters(), None) is None:
+            with torch.no_grad():
+                self.model(X_target_tensor[:1], X_exog_tensor[:1] if X_exog_tensor is not None else None)
 
         # Use lower learning rate for stability with large-scale data
         actual_lr = min(learning_rate, 0.0005)

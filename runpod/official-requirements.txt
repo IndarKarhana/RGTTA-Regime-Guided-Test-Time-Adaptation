@@ -1,0 +1,4 @@
+yacs==0.1.8
+wandb==0.30.0
+einops==0.8.2
+reformer-pytorch==1.4.4

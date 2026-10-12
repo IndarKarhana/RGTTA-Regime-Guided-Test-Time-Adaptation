@@ -84,7 +84,8 @@ def inject_adapters_itransformer(
         adapters.append(adapter)
 
     # Store adapters on the model so they're part of state_dict
-    model.adapters = adapters
+    reference = next(model.parameters())
+    model.adapters = adapters.to(device=reference.device, dtype=reference.dtype)
 
     # Monkey-patch each encoder layer's forward to include adapter
     for i, layer in enumerate(model.encoder_layers):
@@ -137,7 +138,8 @@ def inject_adapters_patchtst(
         adapters.append(adapter)
 
     # Store adapters on the model so they're part of state_dict
-    model.adapters = adapters
+    reference = next(model.parameters())
+    model.adapters = adapters.to(device=reference.device, dtype=reference.dtype)
 
     # Monkey-patch each TransformerEncoderLayer's forward
     for i, layer in enumerate(inner_encoder.layers):

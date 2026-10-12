@@ -1,0 +1,137 @@
+RG-TTA revision evidence and author-review notes — 2026-10-12
+
+CURRENT FILES
+paper/ieee_revision.pdf and paper/ieee_revision.tex are the revised six-page
+IEEE conference draft. paper/main.tex and paper/main.pdf are historical files;
+their numerical claims and theory must not be reused in the new submission.
+All current tables are generated from benchmarks/results/final_validated/.
+
+VALIDATED EVIDENCE
+- 46 targeted regression tests passed; the PDF compiles with no overfull boxes
+  or unresolved-reference warnings. Generated table pages were visually inspected.
+- 672 main model/dataset/horizon/seed settings, seven policies: 4,704 results.
+- 93 focused reviewer settings: 204 policy results.
+- Six released-code runs, frozen/TAFAS/DynaTTA: 18 policy results.
+- All three affected RG policies use corrected checkpoint rollback results.
+- Retraining combines 504 successful original jobs and 168 successful DLinear
+  retries; the failed pre-fix DLinear jobs are not counted as results.
+- Final archive SHA-256:
+  4ec48df5a2da66ebaf6d082cfaa0f0259f6eee3b677d13b3e50fc37fb7ec9e2a
+- Validation checks all archive checksums, exact matrix coverage, duplicate keys,
+  three-seed coverage, finite errors, origin-level and per-step aggregation,
+  matching forecast origins across policies, and original/retry data hashes.
+  For the released pipeline it also checks checkpoint bytes against saved hashes
+  and recomputes MSE/MAE from all saved per-window errors.
+- This validates recorded execution and numerical consistency. It does not
+  substitute for independent scientific review or a complete upstream causal audit.
+
+MAIN FINDINGS
+The unit is a model/dataset/horizon setting after averaging three training seeds.
+Ratios across settings are geometric means; wins are descriptive, not significance.
+RG-TTA versus fixed TTA:
+  Real streams: MSE ratio 0.949946, wins 61/96, total-time ratio 1.412118.
+  Synthetic streams: MSE ratio 0.918919, wins 85/128, total-time ratio 1.442155.
+  Overall: MSE ratio 0.932090, wins 146/224, total-time ratio 1.429204.
+Do not claim the former speedup: corrected RG takes longer on this matrix.
+The DLinear aggregate worsens (ratio 1.022469); retain that negative result.
+RG-EWC improves its own baseline but has little aggregate accuracy advantage over
+RG-TTA and much greater measured time. RG-Dyna improves its own base but does not
+beat ordinary TTA in the aggregate. Baseline choice changes the interpretation.
+
+RESPONSE TO AE CONCERN 1: SCALE AND NONCONVEX ADAPTATION
+Completed evidence: Table III, 24 settings, ETTh1/H96, three seeds, two backbones,
+four configurations. Larger models have 3.30–3.51 million parameters. Reported
+update scopes are head-only, adapter-plus-head, and full-model. iTransformer
+adapter-plus-head is best among its RG configurations. PatchTST full updates are
+best among its RG configurations, while its larger head/adapter RG versions are
+worse than matched TTA. This supports feasibility and backbone-dependent behavior,
+not universal superiority or foundation-model scaling.
+Changes: removed blanket convexity/convergence claims; stated that generic exact-GD
+results do not prove properties of Adam, moving objectives or retrieval. Reported
+actual parameter counts and complete-job peak CUDA memory.
+Still open: multiple datasets/horizons at larger scale; adaptation-only memory;
+shared-source checkpoint hashes for the main/focused policy comparisons. The
+6.4M released-code models are baseline-only evidence, not RG scaling evidence.
+
+RESPONSE TO AE CONCERN 2: MULTIVARIATE REGIMES
+Completed evidence: Table IV, 27 settings on ETTh1, Weather and CovShift. The
+baseline implementation already includes per-covariate means/std in addition to
+target 5D statistics. Added signature comparisons include contemporary correlation,
+lag-1/6/24 autocorrelation and lag-one cross-channel correlation. The new signature
+also changes block scaling. No consistent forecast improvement was observed.
+Changes: removed any claim that dependence features are a validated novel method.
+Explained the target-heavy similarity weights and the scope of the synthetic test.
+Still open: detector-level shift discrimination and shifts that make covariates
+necessary for prediction. CovShift preserves target AR dynamics and tests changed
+association, not a comprehensive conditional-shift taxonomy.
+
+RESPONSE TO AE CONCERN 3: DYNA-TTA AND RETRAIN FAIRNESS
+Completed evidence: six released-code comparisons using unchanged DynaTTA adapter
+source at 03c3cd9568ee9affa5617efa3c8dbc0224bf9a06 with restored TAFAS framework at
+139bf980671da4daad728a0fc21d8df508b9203d. ETTh1/ETTh2, H96, seeds 0/1/2. All three
+policies share a source checkpoint within each seed. Scores use all 3,389 standardized
+multivariate test windows per run. Main-table local reimplementation is explicitly
+called Dyna-style. These protocols are never pooled or used for a direct RG-versus-
+released-DynaTTA claim. Exact paper-table reproduction is not established: complete
+paper-specific configs/checkpoints were unavailable, and the PDF endpoint remained
+behind an access challenge. The evaluated released implementation does not impose
+500-window truncation; this is not evidence that the AE's paper protocol is wrong.
+The EMA/warmup study has 18 settings. EMA .7 beats the default .1 on both streams;
+on Weather it reverses the ranking against RG. No equal-budget validation search
+was performed, and test-selected settings must not be relabeled as fair tuning.
+Retrain has a different recipe: 20 initial epochs, up to 30 per update, expanding
+history, separate preprocessing/training path. Runtime includes a partial-model
+branch even when the full model is selected. Do not market its runtime as an
+optimized always-retrain baseline or an intrinsic RG speedup.
+Still open: independently audit upstream label timing/prediction adjustment and run
+RG inside that same protocol; matched validation tuning; optimized retraining;
+simple frozen/naive/closed-form baselines across the full matrix.
+
+NOVELTY AND CLAIM LIMITS
+The defensible contribution is the controller combination and a transparent
+empirical evaluation of where it helps or hurts. Adapters, dynamic gating, or the
+new feature vector cannot be presented as independent established novelty. The
+current ablations do not isolate retrieval from early stopping and learning-rate
+changes strongly enough to claim retrieval alone explains the gains. A narrower
+empirical paper is supported; a strong state-of-the-art or theory paper is not.
+Do not add untested mechanisms to the manuscript as completed contributions.
+
+CONFERENCE CHECK (official pages checked 2026-10-12)
+IEEE CCWC 2027 is in person at the University of Nevada, Las Vegas, Jan 4–6, 2027.
+The full-paper deadline is Nov 6, 2026. Regular papers allow seven pages before
+extra-page charges; the current draft is six pages. Review is double-blind via
+EDAS. Names, affiliations and funding acknowledgments are excluded from the draft.
+The site also lists AI-text guidance; human authors must review the actual prose
+and retain an appropriate AI-use disclosure. Do not attempt to evade detectors.
+The draft is not submitted, and no acceptance is implied.
+Sources:
+https://ieee-ccwc.org/
+https://ieee-ccwc.org/call-for-papers/
+https://ieee-ccwc.org/submissions/
+
+Updated related work includes:
+TAFAS: https://arxiv.org/abs/2501.04970
+DynaTTA source: https://github.com/shivam-grover/DynaTTA
+PETSA: https://arxiv.org/abs/2506.23424
+Delay-aware audit (Oct 8, 2026): https://arxiv.org/abs/2610.12232
+These sources motivate limitations; their numerical claims are not substituted for
+our missing matched experiments.
+
+REGENERATE LOCALLY (no GPU required)
+From the repository root, with the three saved result archives and checksum files:
+  python3 runpod/finalize_results.py
+  python3 runpod/render_paper_results.py
+  bash paper/build_revision.sh
+The bundled IEEEtran class permits local compilation without installing it globally.
+The review bundle includes generated tables, CSVs, validation JSON, scripts and tests;
+it omits large raw archives, datasets, and model checkpoint binaries. Those remain
+in the local experiment artifacts. It is a review bundle, not an anonymous public
+reproducibility release. Its provenance records and scripts may identify authors.
+
+BEFORE SUBMISSION
+All requested experiment queues are complete. The current revision is concrete and
+reviewable, but its remaining scientific comparisons above are not secretly marked
+as done. The authors must review every claim, confirm affiliations in the submission
+system, check source citations, and decide whether the explicitly limited empirical
+claim is sufficient or whether to fund focused comparisons. The current PDF does
+not claim that the AE's three concerns are completely resolved.

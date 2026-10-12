@@ -35,6 +35,7 @@ import torch
 # Path setup
 # ---------------------------------------------------------------------------
 _benchmark_dir = Path(__file__).parent
+sys.path.insert(0, str(_benchmark_dir.parent))
 sys.path.insert(0, str(_benchmark_dir.parent / "src"))
 sys.path.insert(0, str(_benchmark_dir))
 sys.path.insert(0, str(_benchmark_dir / "data_loaders"))
@@ -50,8 +51,6 @@ from ewc_forecaster import EWCForecaster
 from rgtta_forecaster import RGTTAForecaster
 from dynatta_forecaster import DynaTTAForecaster
 from rgtta_dynatta_forecaster import RGTTADynaTTAForecaster
-from tafas_forecaster import TAFASForecaster
-from rgtta_tafas_forecaster import RGTTATAFASForecaster
 
 from regime_forecasting.models.transformer import TimeSeriesTransformer
 from regime_forecasting.models.large_gru_model import LargeGRUForecaster
@@ -230,7 +229,19 @@ class UnifiedBenchmark:
         rgtta_gate_min: float = 0.60,
         rgtta_gate_max: float = 0.85,
         rgtta_vol_window: int = 5,
+        device: str = "cpu",
     ):
+        self.device = torch.device(device)
+        if self.device.type not in {"cpu", "cuda"}:
+            raise ValueError("Benchmark supports cpu or cuda devices")
+        if self.device.type == "cuda":
+            if not torch.cuda.is_available():
+                raise ValueError("CUDA requested but unavailable; refusing CPU fallback")
+            if n_workers != 1:
+                raise ValueError("Use --workers 1 for a single GPU benchmark")
+            if self.device.index is None:
+                self.device = torch.device("cuda", 0)
+            torch.cuda.set_device(self.device)
         if results_dir is None:
             results_dir = str(_benchmark_dir / "results" / "unified")
         self.results_dir = Path(results_dir)
@@ -253,6 +264,10 @@ class UnifiedBenchmark:
         self.results: Dict[str, Any] = {
             "metadata": {
                 "timestamp": datetime.now().isoformat(),
+                "evaluation_protocol": "observed_batch_to_next_batch_v1",
+                "device": str(self.device),
+                "torch_version": torch.__version__,
+                "gpu_name": torch.cuda.get_device_name(self.device) if self.device.type == "cuda" else None,
                 "n_seeds": n_seeds,
                 "forecast_horizons": self.forecast_horizons,
                 "models": self.model_keys,
@@ -273,6 +288,12 @@ class UnifiedBenchmark:
     # -----------------------------------------------------------------------
     # Helpers
     # -----------------------------------------------------------------------
+    def _clock(self):
+        # CUDA kernels are asynchronous; synchronize before measuring elapsed time.
+        if self.device.type == "cuda":
+            torch.cuda.synchronize(self.device)
+        return time.perf_counter()
+
     @staticmethod
     def _safe_stat(vals: List[float]) -> Tuple[float, float]:
         """Mean and std, returning NaN for empty lists."""
@@ -307,6 +328,7 @@ class UnifiedBenchmark:
             sequence_length=SEQUENCE_LENGTH,
         )
         model_common = dict(
+            device=str(self.device),
             hidden_dim=model_kw.get("hidden_dim", 64),
             num_layers=model_kw.get("num_layers", 2),
             num_heads=model_kw.get("num_heads", 4),
@@ -376,12 +398,16 @@ class UnifiedBenchmark:
         )
 
         # 5. TAFAS  (Kim et al., AAAI 2025 — frozen model + GCM calibration)
-        tafas = TAFASForecaster(
-            **common,
-            **model_common,
-            **mv_common,
-            model_class=model_cls,
-        )
+        tafas = None
+        if "tafas" in self.policies:
+            # These optional implementations are not included in this checkout.
+            from tafas_forecaster import TAFASForecaster
+            tafas = TAFASForecaster(
+                **common,
+                **model_common,
+                **mv_common,
+                model_class=model_cls,
+            )
 
         # 6. RGTTA v2 (regime-guided TTA — our core contribution)
         rgtta = RGTTAForecaster(
@@ -446,12 +472,16 @@ class UnifiedBenchmark:
         )
 
         # 9. RGTTA+TAFAS (regime-guided GCM adaptation)
-        rgtta_tafas = RGTTATAFASForecaster(
-            **common,
-            **model_common,
-            **mv_common,
-            model_class=model_cls,
-        )
+        rgtta_tafas = None
+        if "rgtta_tafas" in self.policies:
+            # These optional implementations are not included in this checkout.
+            from rgtta_tafas_forecaster import RGTTATAFASForecaster
+            rgtta_tafas = RGTTATAFASForecaster(
+                **common,
+                **model_common,
+                **mv_common,
+                model_class=model_cls,
+            )
 
         all_forecasters = {
             "retrain": retrain,
@@ -553,28 +583,33 @@ class UnifiedBenchmark:
 
         # --- Initial fit ---------------------------------------------------
         for policy, fc in forecasters.items():
-            t0 = time.time()
+            # Matched policies must start from the same initialization and shuffle stream.
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+            t0 = self._clock()
             try:
                 if policy in _regime_policies:
                     fc.fit_incremental(full_history)
                 else:
                     fc.fit(full_history, epochs=INITIAL_EPOCHS)
             except Exception as e:
-                logger.debug(f"Init-fit error {policy}: {e}")
-            metrics[policy]["time"].append(time.time() - t0)
+                raise RuntimeError(f"Initial fit failed for {policy}") from e
+            metrics[policy]["time"].append(self._clock() - t0)
 
         # --- Process batches -----------------------------------------------
-        for i, batch in enumerate(batches):
+        for i, batch in enumerate(batches[:-1]):
             full_history = pd.concat([full_history, batch], ignore_index=True)
+            future_batch = batches[i + 1]
+            if len(future_batch) < forecast_horizon:
+                break
 
-            if len(batch) < forecast_horizon:
-                continue
-
-            test_context = full_history.iloc[:-forecast_horizon].copy()
-            ground_truth = batch["y"].values[-forecast_horizon:]
+            # Only the observed batch reaches adaptation, scaling, and retrieval.
+            # Score the next H observations, which no forecaster has received.
+            test_context = full_history.copy()
+            ground_truth = future_batch["y"].values[:forecast_horizon]
 
             for policy, fc in forecasters.items():
-                t0 = time.time()
+                t0 = self._clock()
                 try:
                     # Update
                     if policy in _regime_policies:
@@ -621,9 +656,12 @@ class UnifiedBenchmark:
                             per_step_mae = (np.abs(gt - pr)).tolist()
 
                             # Per-batch detail dict (ALL policies)
-                            batch_time = time.time() - t0
+                            batch_time = self._clock() - t0
                             batch_detail = {
                                 "batch": i,
+                                "forecast_origin": str(test_context["ds"].iloc[-1]),
+                                "target_start": str(future_batch["ds"].iloc[0]),
+                                "target_end": str(future_batch["ds"].iloc[forecast_horizon - 1]),
                                 "mse": batch_mse,
                                 "mae": batch_mae,
                                 "rmse": batch_rmse,
@@ -664,8 +702,8 @@ class UnifiedBenchmark:
                                 batch_detail["gcm_loaded"] = res.get("gcm_loaded", False)
                             metrics[policy]["batch_metrics"].append(batch_detail)
                 except Exception as e:
-                    logger.debug(f"Batch {i} {policy} error: {e}")
-                metrics[policy]["time"].append(time.time() - t0)
+                    raise RuntimeError(f"Batch {i} failed for {policy}") from e
+                metrics[policy]["time"].append(self._clock() - t0)
 
         # --- Assemble result -----------------------------------------------
         result: Dict[str, Any] = {
@@ -702,7 +740,7 @@ class UnifiedBenchmark:
                 "total_time": sum(m["time"]),
                 "n_batches_evaluated": len(m["mse"]),
                 "matches": m.get("matches", 0),
-                "match_rate": m["matches"] / len(batches) if len(batches) > 0 else 0,
+                "match_rate": m["matches"] / len(m["mse"]) if m["mse"] else 0,
                 "batch_metrics": m["batch_metrics"],  # full per-batch detail
             }
 
@@ -813,7 +851,7 @@ class UnifiedBenchmark:
                         jobs.append((model_key, ds, h, seed))
 
         total = len(jobs)
-        t_start = time.time()
+        t_start = self._clock()
 
         logger.info("=" * 70)
         logger.info("  UNIFIED MULTI-MODEL BENCHMARK")
@@ -831,12 +869,17 @@ class UnifiedBenchmark:
         else:
             self._run_sequential(jobs, total)
 
-        elapsed = time.time() - t_start
+        elapsed = self._clock() - t_start
         self.results["metadata"]["total_time_seconds"] = elapsed
         self.results["metadata"]["n_workers"] = self.n_workers
         self._save_results()
         self._generate_report()
         self._export_csv()
+        if len(self.results["experiments"]) != total:
+            raise RuntimeError(
+                f"Incomplete benchmark: {len(self.results['experiments'])}/{total} experiments succeeded; "
+                "partial results were saved."
+            )
 
         logger.info("=" * 70)
         logger.info(f"✅  BENCHMARK COMPLETE  ({elapsed / 60:.1f} min, {self.n_workers} workers)")
@@ -1346,6 +1389,8 @@ def main():
                         help="Which models to benchmark")
     parser.add_argument("--quick", action="store_true",
                         help="1 seed, 1 horizon, 1 model for smoke testing")
+    parser.add_argument("--device", choices=["cpu", "cuda"], default="cpu",
+                        help="Execution device. CUDA fails explicitly if unavailable.")
     parser.add_argument("--workers", type=int, default=1,
                         help="Number of parallel workers. Use 1 for sequential (default). "
                              "Recommended: CPU_cores // 2 (e.g., 4 for 8-core, 48 for 96-core).")
@@ -1392,6 +1437,7 @@ def main():
         forecast_horizons=args.horizons,
         model_keys=args.models or list(MODEL_REGISTRY.keys()),
         n_workers=args.workers,
+        device=args.device,
         policies=args.policies,
         results_dir=args.results_dir,
         use_adapter=args.use_adapters,

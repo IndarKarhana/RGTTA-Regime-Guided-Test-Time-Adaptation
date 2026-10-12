@@ -1,0 +1,10 @@
+# Match the local tested scientific stack. Keep the template's CUDA-enabled torch.
+numpy==2.4.4
+pandas==2.3.3
+scikit-learn==1.8.0
+statsmodels==0.14.6
+tqdm==4.67.1
+matplotlib==3.10.8
+seaborn==0.13.2
+scipy==1.16.3
+pytest==9.0.2

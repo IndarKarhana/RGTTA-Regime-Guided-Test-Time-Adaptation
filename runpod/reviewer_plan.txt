@@ -1,0 +1,25 @@
+Reviewer studies, October 10 2026
+
+93 experiments, H=96, model seeds 0/1/2. These are focused studies, not full
+coverage across all datasets/horizons or foundation-model evidence.
+
+Scale: iTransformer and PatchTST, ETTh1; small/head, 256-wide 4-layer/head,
+256-wide 4-layer/adapter, 256-wide 4-layer/full. Actual total/adapted parameter
+counts, wall time and per-experiment peak GPU memory are recorded.
+Features: target-only five statistics; existing marginal features; dependence
+signature with log-compressed moments, contemporaneous correlations, lags 1/6/24,
+and directed lag-1 correlations. Feature blocks are scaled by sqrt(dimension).
+Datasets: ETTh1, Weather, controlled CovShift. CovShift has 8220 observations,
+seed 194, y[t]=0.9*y[t-1]+N(0,0.4), z[t]=0.7*z[t-1]+N(0,0.5),
+x[t]=sign*y[t]+N(0,0.1); sign switches every 1500 rows. y/z start at zero.
+Ablations: disable checkpoint reuse only; disable loss gate only; disable regime
+LR modulation only; frozen no-adaptation control. ETTh1 and Weather.
+DynaTTA sensitivity: eta=.1/warmup60; eta=.7/warmup60; eta=.1/warmup96.
+Same causal batch protocol for all policies. These are not original sliding-window
+DynaTTA results. Official code imports missing models/datasets/config/trainer.
+Official source: https://github.com/shivam-grover/DynaTTA
+
+All new runs fix rejected-checkpoint rollback aliasing and CUDA adapter placement.
+Existing full-matrix RG-family results predate rollback fix and are provisional.
+No benchmark outcome will be selected or omitted based on accuracy. Failures and
+incomplete studies must be disclosed. Hyperparameters are fixed before execution.
